@@ -1,0 +1,72 @@
+<?php
+
+use App\Models\Team;
+use App\Models\User;
+
+it('lists teams with pagination', function () {
+    Team::factory()->count(3)->create();
+
+    $this->actingAs(User::factory()->create())
+        ->getJson('/api/v1/teams')
+        ->assertOk()
+        ->assertJsonCount(3, 'data');
+});
+
+it('searches teams by name', function () {
+    Team::factory()->create(['name' => 'Engineering']);
+    Team::factory()->create(['name' => 'Sales']);
+
+    $this->actingAs(User::factory()->create())
+        ->getJson('/api/v1/teams?search=Engineering')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.name', 'Engineering');
+});
+
+it('orders teams by multiple columns', function () {
+    Team::factory()->create(['name' => 'Beta']);
+    Team::factory()->create(['name' => 'Alpha']);
+
+    $this->actingAs(User::factory()->create())
+        ->getJson('/api/v1/teams?order[name]=asc&order[created_at]=desc')
+        ->assertOk()
+        ->assertJsonPath('data.0.name', 'Alpha')
+        ->assertJsonPath('data.1.name', 'Beta');
+});
+
+it('creates a team', function () {
+    $this->actingAs(User::factory()->create())
+        ->postJson('/api/v1/teams', ['name' => 'Engineering'])
+        ->assertCreated()
+        ->assertJsonPath('data.name', 'Engineering');
+
+    expect(Team::query()->where('name', 'Engineering')->exists())->toBeTrue();
+});
+
+it('validates required fields when creating a team', function () {
+    $this->actingAs(User::factory()->create())
+        ->postJson('/api/v1/teams', [])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('name');
+});
+
+it('updates a team', function () {
+    $team = Team::factory()->create(['name' => 'Old Name']);
+
+    $this->actingAs(User::factory()->create())
+        ->putJson("/api/v1/teams/{$team->id}", ['name' => 'New Name'])
+        ->assertOk()
+        ->assertJsonPath('data.name', 'New Name');
+
+    expect($team->refresh()->name)->toBe('New Name');
+});
+
+it('deletes a team', function () {
+    $team = Team::factory()->create();
+
+    $this->actingAs(User::factory()->create())
+        ->deleteJson("/api/v1/teams/{$team->id}")
+        ->assertNoContent();
+
+    expect(Team::query()->find($team->id))->toBeNull();
+});
