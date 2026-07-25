@@ -34,6 +34,22 @@ it('orders teams by multiple columns', function () {
         ->assertJsonPath('data.1.name', 'Beta');
 });
 
+it('shows a team', function () {
+    $team = Team::factory()->create(['name' => 'Engineering']);
+
+    $this->actingAs(User::factory()->create())
+        ->getJson("/api/v1/teams/{$team->id}")
+        ->assertOk()
+        ->assertJsonPath('data.id', $team->id)
+        ->assertJsonPath('data.name', 'Engineering');
+});
+
+it('returns 404 for a non-existent team', function () {
+    $this->actingAs(User::factory()->create())
+        ->getJson('/api/v1/teams/999999')
+        ->assertNotFound();
+});
+
 it('creates a team', function () {
     $this->actingAs(User::factory()->create())
         ->postJson('/api/v1/teams', ['name' => 'Engineering'])
@@ -61,6 +77,12 @@ it('updates a team', function () {
     expect($team->refresh()->name)->toBe('New Name');
 });
 
+it('returns 404 when updating a non-existent team', function () {
+    $this->actingAs(User::factory()->create())
+        ->putJson('/api/v1/teams/999999', ['name' => 'New Name'])
+        ->assertNotFound();
+});
+
 it('deletes a team', function () {
     $team = Team::factory()->create();
 
@@ -69,4 +91,10 @@ it('deletes a team', function () {
         ->assertNoContent();
 
     expect(Team::query()->find($team->id))->toBeNull();
+});
+
+it('returns 404 when deleting a non-existent team', function () {
+    $this->actingAs(User::factory()->create())
+        ->deleteJson('/api/v1/teams/999999')
+        ->assertNotFound();
 });

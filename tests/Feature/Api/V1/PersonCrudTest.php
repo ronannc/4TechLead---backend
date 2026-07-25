@@ -38,6 +38,22 @@ it('orders people by multiple columns', function () {
         ->assertJsonPath('data.1.name', 'Beta');
 });
 
+it('shows a person', function () {
+    $person = Person::factory()->create(['name' => 'Ada Lovelace']);
+
+    $this->actingAs(User::factory()->create())
+        ->getJson("/api/v1/people/{$person->id}")
+        ->assertOk()
+        ->assertJsonPath('data.id', $person->id)
+        ->assertJsonPath('data.name', 'Ada Lovelace');
+});
+
+it('returns 404 for a non-existent person', function () {
+    $this->actingAs(User::factory()->create())
+        ->getJson('/api/v1/people/999999')
+        ->assertNotFound();
+});
+
 it('creates a person linked to an existing team', function () {
     $team = Team::factory()->create();
 
@@ -66,6 +82,12 @@ it('updates a person', function () {
     expect($person->refresh()->name)->toBe('New Name');
 });
 
+it('returns 404 when updating a non-existent person', function () {
+    $this->actingAs(User::factory()->create())
+        ->putJson('/api/v1/people/999999', ['name' => 'New Name'])
+        ->assertNotFound();
+});
+
 it('deletes a person', function () {
     $person = Person::factory()->create();
 
@@ -74,4 +96,10 @@ it('deletes a person', function () {
         ->assertNoContent();
 
     expect(Person::query()->find($person->id))->toBeNull();
+});
+
+it('returns 404 when deleting a non-existent person', function () {
+    $this->actingAs(User::factory()->create())
+        ->deleteJson('/api/v1/people/999999')
+        ->assertNotFound();
 });
