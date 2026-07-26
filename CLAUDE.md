@@ -311,6 +311,31 @@ Using `Team`/`Person` (`app/Models/Team.php`, `app/Models/Person.php`, `app/Http
 - `tests/Pest.php` binds **both** `Feature` and `Unit` to `Tests\TestCase` + `RefreshDatabase` (not just
   `Feature` as in the stock Pest scaffold) — Unit model/policy tests need a real (sqlite in-memory) database.
 
+## `Person` — real fields, still 100% generic CRUD
+
+`Person` started as a bare `{name, team_id}` model to prove out the CRUD architecture above; it has
+since grown a real HR-ish field set (management/development data a tech lead tracks per team member),
+without needing any custom Service, custom Controller logic, or a change to `CrudControllerTrait`
+itself — this is the intended payoff of the generic layer.
+
+Fields: `birth_date`, `position`, `contract_type`, `admission_date`, `seniority` (all required on
+create), plus optional `email`/`phone`. `age` is **never stored** — it's an Eloquent accessor
+(`Person::age()`, `Attribute::make(get: fn () => $this->birth_date?->age)`) computed from `birth_date`
+on every read, so there's a single source of truth and it can't drift out of sync.
+
+Two enums in `app/Enums/` (`ContractType`: Clt/Pj/Hourly/Cooperative — `'clt'|'pj'|'horista'|'cooperado'`;
+`SeniorityLevel`: Intern/Junior/Mid/Senior/Specialist — `'estagiario'|'junior'|'pleno'|'senior'|'especialista'`)
+are Eloquent-cast on the model (`casts()`: `contract_type` => `ContractType::class`, etc.) and validated
+via `Rule::enum(...)` in the Form Requests — Eloquent automatically unwraps a `BackedEnum` to its scalar
+value when the model is serialized, so `PersonResource` returns them as plain strings with no extra
+handling. `filterableFields()` includes `contract_type`/`seniority` (so `?filters[contract_type]=pj`
+works out of the box via `Filterable`), `searchableFields()` adds `position`.
+
+`admission_date` must be `after:birth_date` in `StorePersonRequest` — deliberately **not** repeated in
+`UpdatePersonRequest`, since a partial (`sometimes`) update could send `admission_date` alone without
+`birth_date` in the same payload, and Laravel's `after:<field>` rule compares against a missing value in
+that case rather than the already-persisted one.
+
 ## Authentication (Sanctum bearer tokens)
 
 Auth is `laravel/sanctum` (v4) using **personal access tokens** (`Authorization: Bearer <token>`), not
