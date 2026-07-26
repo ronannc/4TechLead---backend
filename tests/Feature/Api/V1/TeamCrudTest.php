@@ -6,17 +6,21 @@ use App\Models\User;
 it('lists teams with pagination', function () {
     Team::factory()->count(3)->create();
 
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(User::factory()->create(), 'sanctum')
         ->getJson('/api/v1/teams')
         ->assertOk()
         ->assertJsonCount(3, 'data');
+});
+
+it('rejects listing teams without authentication', function () {
+    $this->getJson('/api/v1/teams')->assertUnauthorized();
 });
 
 it('searches teams by name', function () {
     Team::factory()->create(['name' => 'Engineering']);
     Team::factory()->create(['name' => 'Sales']);
 
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(User::factory()->create(), 'sanctum')
         ->getJson('/api/v1/teams?search=Engineering')
         ->assertOk()
         ->assertJsonCount(1, 'data')
@@ -27,7 +31,7 @@ it('orders teams by multiple columns', function () {
     Team::factory()->create(['name' => 'Beta']);
     Team::factory()->create(['name' => 'Alpha']);
 
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(User::factory()->create(), 'sanctum')
         ->getJson('/api/v1/teams?order[name]=asc&order[created_at]=desc')
         ->assertOk()
         ->assertJsonPath('data.0.name', 'Alpha')
@@ -37,7 +41,7 @@ it('orders teams by multiple columns', function () {
 it('shows a team', function () {
     $team = Team::factory()->create(['name' => 'Engineering']);
 
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(User::factory()->create(), 'sanctum')
         ->getJson("/api/v1/teams/{$team->id}")
         ->assertOk()
         ->assertJsonPath('data.id', $team->id)
@@ -45,13 +49,13 @@ it('shows a team', function () {
 });
 
 it('returns 404 for a non-existent team', function () {
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(User::factory()->create(), 'sanctum')
         ->getJson('/api/v1/teams/999999')
         ->assertNotFound();
 });
 
 it('creates a team', function () {
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(User::factory()->create(), 'sanctum')
         ->postJson('/api/v1/teams', ['name' => 'Engineering'])
         ->assertCreated()
         ->assertJsonPath('data.name', 'Engineering');
@@ -60,7 +64,7 @@ it('creates a team', function () {
 });
 
 it('validates required fields when creating a team', function () {
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(User::factory()->create(), 'sanctum')
         ->postJson('/api/v1/teams', [])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('name');
@@ -69,7 +73,7 @@ it('validates required fields when creating a team', function () {
 it('updates a team', function () {
     $team = Team::factory()->create(['name' => 'Old Name']);
 
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(User::factory()->create(), 'sanctum')
         ->putJson("/api/v1/teams/{$team->id}", ['name' => 'New Name'])
         ->assertOk()
         ->assertJsonPath('data.name', 'New Name');
@@ -78,7 +82,7 @@ it('updates a team', function () {
 });
 
 it('returns 404 when updating a non-existent team', function () {
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(User::factory()->create(), 'sanctum')
         ->putJson('/api/v1/teams/999999', ['name' => 'New Name'])
         ->assertNotFound();
 });
@@ -86,7 +90,7 @@ it('returns 404 when updating a non-existent team', function () {
 it('deletes a team', function () {
     $team = Team::factory()->create();
 
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(User::factory()->create(), 'sanctum')
         ->deleteJson("/api/v1/teams/{$team->id}")
         ->assertNoContent();
 
@@ -94,7 +98,7 @@ it('deletes a team', function () {
 });
 
 it('returns 404 when deleting a non-existent team', function () {
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(User::factory()->create(), 'sanctum')
         ->deleteJson('/api/v1/teams/999999')
         ->assertNotFound();
 });

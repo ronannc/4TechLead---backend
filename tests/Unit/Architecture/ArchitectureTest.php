@@ -4,8 +4,8 @@ arch('controllers do not access the database or Eloquent builder directly')
     ->expect('App\Http\Controllers')
     ->not->toUse(['Illuminate\Support\Facades\DB', 'Illuminate\Database\Eloquent\Builder']);
 
-arch('controllers use the CrudControllerTrait trait')
-    ->expect('App\Http\Controllers\Api\V1')
+arch('CRUD resource controllers use the CrudControllerTrait trait')
+    ->expect(['App\Http\Controllers\Api\V1\TeamController', 'App\Http\Controllers\Api\V1\PersonController'])
     ->toUseTrait('App\Http\Controllers\Concerns\CrudControllerTrait');
 
 arch('generic services implement their matching contract')

@@ -12,6 +12,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - php - 8.5
 - laravel/framework (LARAVEL) - v13
 - laravel/prompts (PROMPTS) - v0
+- laravel/sanctum (SANCTUM) - v4
 - laravel/boost (BOOST) - v2
 - laravel/mcp (MCP) - v0
 - laravel/pail (PAIL) - v1
@@ -104,6 +105,13 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 # Deployment
 
 - Laravel can be deployed using [Laravel Cloud](https://cloud.laravel.com/), which is the fastest way to deploy and scale production Laravel applications.
+
+=== tests rules ===
+
+# Test Enforcement
+
+- Every change must be programmatically tested. Write a new test or update an existing test, then run the affected tests to make sure they pass.
+- Run the minimum number of tests needed to ensure code quality and speed. Use `php artisan test --compact` with a specific filename or filter.
 
 === laravel/core rules ===
 
@@ -302,3 +310,37 @@ Using `Team`/`Person` (`app/Models/Team.php`, `app/Models/Person.php`, `app/Http
   a resource that should be held to the same rules.
 - `tests/Pest.php` binds **both** `Feature` and `Unit` to `Tests\TestCase` + `RefreshDatabase` (not just
   `Feature` as in the stock Pest scaffold) — Unit model/policy tests need a real (sqlite in-memory) database.
+
+## Authentication (Sanctum bearer tokens)
+
+Auth is `laravel/sanctum` (v4) using **personal access tokens** (`Authorization: Bearer <token>`), not
+the SPA/cookie "stateful" mode — this app is consumed by a Flutter client (mobile + desktop), not a web
+SPA sharing a cookie domain with the backend, so the token-guard mode is the correct fit.
+
+- `config/auth.php` has a `sanctum` guard (`driver: sanctum, provider: users`); `app/Models/User.php` uses
+  `Laravel\Sanctum\HasApiTokens`.
+- `routes/api.php`: `POST /auth/register` and `POST /auth/login` are **public** (outside any auth
+  middleware). `POST /auth/logout`, `GET /auth/me`, and all of `teams`/`people` sit behind
+  `Route::middleware('auth:sanctum')`. An unauthenticated request to a protected route now gets a real
+  **401** from the guard itself (not the 403-by-accident from Gate's guest-denial the Policies used to
+  produce before Sanctum existed).
+- `app/Http/Controllers/Api/V1/AuthController.php` — thin, delegates to one service per operation
+  (`App\Services\Auth\{RegisterUserService,LoginService,LogoutService}`), same "one class per operation"
+  convention as the CRUD services. `register()`/`login()` both return `{data: {id, name, email,
+  created_at}, token}` — **register auto-authenticates** (returns a token immediately, same shape as
+  login) so the client never needs a second login call after signing up.
+- Failed login is a generic `InvalidCredentialsException` (`app/Exceptions/InvalidCredentialsException.php`,
+  renders as 401 `{message: "These credentials do not match our records."}`) — never reveals whether the
+  email or the password was wrong.
+- `LogoutService` revokes only the *current* token (`$user->currentAccessToken()->delete()`), not all of
+  the user's tokens.
+- Tests: use `Sanctum::actingAs($user)`-equivalent — in this codebase, `$this->actingAs($user, 'sanctum')`
+  (explicit guard name, since the routes now require the `sanctum` guard specifically, not the default
+  `web` guard). See `tests/Feature/Api/V1/AuthTest.php` for the full auth test suite and
+  `TeamCrudTest`/`PersonCrudTest` for the guard-name update applied to existing CRUD tests. Avoid chaining
+  two authenticated HTTP calls against the *same* token within a single Pest test to assert revocation
+  (e.g. "logout then call a protected route again") — Laravel's `Auth` guard caches the resolved user on
+  the guard instance across sequential test-client calls within one test method, so a second call may
+  incorrectly still appear authenticated even though the token was really deleted (confirmed via manual
+  `curl` that revocation works correctly across real, separate HTTP requests). Assert the DB/token-count
+  side effect directly instead.
