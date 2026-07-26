@@ -2,8 +2,11 @@
 
 namespace App\Http\Requests\Person;
 
+use App\Enums\ContractType;
+use App\Enums\SeniorityLevel;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StorePersonRequest extends FormRequest
 {
@@ -25,6 +28,13 @@ class StorePersonRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'team_id' => ['required', 'integer', 'exists:teams,id'],
+            'birth_date' => ['required', 'date', 'before:today'],
+            'position' => ['required', 'string', 'max:255'],
+            'contract_type' => ['required', Rule::enum(ContractType::class)],
+            'admission_date' => ['required', 'date', 'before_or_equal:today', 'after:birth_date'],
+            'seniority' => ['required', Rule::enum(SeniorityLevel::class)],
+            'email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:30'],
         ];
     }
 }

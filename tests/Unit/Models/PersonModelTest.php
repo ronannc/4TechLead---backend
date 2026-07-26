@@ -1,7 +1,31 @@
 <?php
 
+use App\Enums\ContractType;
+use App\Enums\SeniorityLevel;
 use App\Models\Person;
 use App\Models\Team;
+
+it('computes age from birth_date', function () {
+    $person = Person::factory()->create(['birth_date' => now()->subYears(30)->toDateString()]);
+
+    expect($person->age)->toBe(30);
+});
+
+it('returns null age when birth_date is null', function () {
+    $person = Person::factory()->create(['birth_date' => null]);
+
+    expect($person->age)->toBeNull();
+});
+
+it('casts contract_type and seniority to their enums', function () {
+    $person = Person::factory()->create([
+        'contract_type' => ContractType::Pj,
+        'seniority' => SeniorityLevel::Senior,
+    ]);
+
+    expect($person->contract_type)->toBe(ContractType::Pj)
+        ->and($person->seniority)->toBe(SeniorityLevel::Senior);
+});
 
 it('belongs to a team', function () {
     $team = Team::factory()->create();

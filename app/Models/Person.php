@@ -2,14 +2,27 @@
 
 namespace App\Models;
 
+use App\Enums\ContractType;
+use App\Enums\SeniorityLevel;
 use App\Models\Concerns\Filterable;
 use Database\Factories\PersonFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['name', 'team_id'])]
+#[Fillable([
+    'name',
+    'team_id',
+    'birth_date',
+    'position',
+    'contract_type',
+    'email',
+    'phone',
+    'admission_date',
+    'seniority',
+])]
 class Person extends Model
 {
     /** @use HasFactory<PersonFactory> */
@@ -24,11 +37,34 @@ class Person extends Model
     }
 
     /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'birth_date' => 'date',
+            'admission_date' => 'date',
+            'contract_type' => ContractType::class,
+            'seniority' => SeniorityLevel::class,
+        ];
+    }
+
+    /**
+     * Derived from `birth_date` — never stored, always computed on read.
+     *
+     * @return Attribute<int|null, never>
+     */
+    protected function age(): Attribute
+    {
+        return Attribute::make(get: fn (): ?int => $this->birth_date?->age);
+    }
+
+    /**
      * @return array<int, string>
      */
     protected function filterableFields(): array
     {
-        return ['team_id'];
+        return ['team_id', 'contract_type', 'seniority'];
     }
 
     /**
@@ -36,7 +72,7 @@ class Person extends Model
      */
     protected function searchableFields(): array
     {
-        return ['name'];
+        return ['name', 'position'];
     }
 
     /**
@@ -44,6 +80,6 @@ class Person extends Model
      */
     protected function sortableFields(): array
     {
-        return ['name', 'created_at'];
+        return ['name', 'created_at', 'birth_date', 'admission_date'];
     }
 }

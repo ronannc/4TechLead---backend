@@ -2,8 +2,11 @@
 
 namespace App\Http\Requests\Person;
 
+use App\Enums\ContractType;
+use App\Enums\SeniorityLevel;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class IndexPersonRequest extends FormRequest
 {
@@ -29,6 +32,8 @@ class IndexPersonRequest extends FormRequest
             'order' => ['sometimes', 'array'],
             'order.*' => ['sometimes', 'string', 'in:asc,desc'],
             'filters.team_id' => ['sometimes', 'integer', 'exists:teams,id'],
+            'filters.contract_type' => ['sometimes', Rule::enum(ContractType::class)],
+            'filters.seniority' => ['sometimes', Rule::enum(SeniorityLevel::class)],
         ];
     }
 }

@@ -3,6 +3,22 @@
 use App\Models\Person;
 use App\Models\Team;
 use App\Models\User;
+use Carbon\Carbon;
+
+function validPersonPayload(int $teamId, array $overrides = []): array
+{
+    return array_merge([
+        'name' => 'Ada Lovelace',
+        'team_id' => $teamId,
+        'birth_date' => '1990-05-10',
+        'position' => 'Software Engineer',
+        'contract_type' => 'clt',
+        'admission_date' => '2020-01-15',
+        'seniority' => 'senior',
+        'email' => 'ada@example.com',
+        'phone' => '+55 11 99999-0000',
+    ], $overrides);
+}
 
 it('lists people with pagination', function () {
     Person::factory()->count(3)->create();
@@ -42,14 +58,15 @@ it('orders people by multiple columns', function () {
         ->assertJsonPath('data.1.name', 'Beta');
 });
 
-it('shows a person', function () {
-    $person = Person::factory()->create(['name' => 'Ada Lovelace']);
+it('shows a person with age computed from birth_date', function () {
+    $person = Person::factory()->create(['name' => 'Ada Lovelace', 'birth_date' => '1990-05-10']);
 
     $this->actingAs(User::factory()->create(), 'sanctum')
         ->getJson("/api/v1/people/{$person->id}")
         ->assertOk()
         ->assertJsonPath('data.id', $person->id)
-        ->assertJsonPath('data.name', 'Ada Lovelace');
+        ->assertJsonPath('data.name', 'Ada Lovelace')
+        ->assertJsonPath('data.age', Carbon::parse('1990-05-10')->age);
 });
 
 it('returns 404 for a non-existent person', function () {
@@ -62,17 +79,49 @@ it('creates a person linked to an existing team', function () {
     $team = Team::factory()->create();
 
     $this->actingAs(User::factory()->create(), 'sanctum')
-        ->postJson('/api/v1/people', ['name' => 'Ada Lovelace', 'team_id' => $team->id])
+        ->postJson('/api/v1/people', validPersonPayload($team->id))
         ->assertCreated()
         ->assertJsonPath('data.name', 'Ada Lovelace')
-        ->assertJsonPath('data.team_id', $team->id);
+        ->assertJsonPath('data.team_id', $team->id)
+        ->assertJsonPath('data.contract_type', 'clt')
+        ->assertJsonPath('data.seniority', 'senior');
 });
 
 it('rejects a person with a non-existent team_id', function () {
     $this->actingAs(User::factory()->create(), 'sanctum')
-        ->postJson('/api/v1/people', ['name' => 'Ada Lovelace', 'team_id' => 999999])
+        ->postJson('/api/v1/people', validPersonPayload(999999))
         ->assertUnprocessable()
         ->assertJsonValidationErrors('team_id');
+});
+
+it('rejects a person with an invalid contract_type', function () {
+    $team = Team::factory()->create();
+
+    $this->actingAs(User::factory()->create(), 'sanctum')
+        ->postJson('/api/v1/people', validPersonPayload($team->id, ['contract_type' => 'invalid']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('contract_type');
+});
+
+it('rejects a person with an invalid seniority', function () {
+    $team = Team::factory()->create();
+
+    $this->actingAs(User::factory()->create(), 'sanctum')
+        ->postJson('/api/v1/people', validPersonPayload($team->id, ['seniority' => 'invalid']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('seniority');
+});
+
+it('rejects a person with a birth_date in the future', function () {
+    $team = Team::factory()->create();
+
+    $this->actingAs(User::factory()->create(), 'sanctum')
+        ->postJson(
+            '/api/v1/people',
+            validPersonPayload($team->id, ['birth_date' => now()->addDay()->toDateString()])
+        )
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('birth_date');
 });
 
 it('updates a person', function () {
