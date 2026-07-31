@@ -23,7 +23,7 @@ final class AuthController extends Controller
     {
         $result = app(RegisterUserService::class)->register($request->validated());
 
-        return new UserResource($result['user'])
+        return (new UserResource($result['user']))
             ->additional(['token' => $result['token']])
             ->response()
             ->setStatusCode(201);
@@ -36,7 +36,7 @@ final class AuthController extends Controller
     {
         $result = app(LoginService::class)->login($request->validated());
 
-        return new UserResource($result['user'])
+        return (new UserResource($result['user']))
             ->additional(['token' => $result['token']])
             ->response();
     }
@@ -50,6 +50,6 @@ final class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        return new UserResource($request->user())->response();
+        return (new UserResource($request->user()))->response();
     }
 }
