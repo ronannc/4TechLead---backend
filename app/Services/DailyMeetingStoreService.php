@@ -1,0 +1,54 @@
+<?php
+
+namespace App\Services;
+
+use App\Contracts\Services\StoreServiceContract;
+use App\Models\DailyMeeting;
+use App\Models\DailyMeetingEntry;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * The project's first custom Store service: creating a DailyMeeting also creates every one of its
+ * entries in the same transaction, which GenericStoreService's plain `create($attributes)` can't do
+ * (the nested `entries` array would otherwise be silently dropped by #[Fillable]).
+ *
+ * Entries are written via a single bulk `insert()` (one query for N rows) rather than one `create()`
+ * per entry (N queries) — a daily can have as many entries as the team has people, and this is a
+ * write path that runs at the end of every single daily.
+ */
+final class DailyMeetingStoreService implements StoreServiceContract
+{
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function store(array $attributes): Model
+    {
+        return DB::transaction(function () use ($attributes): DailyMeeting {
+            $meeting = DailyMeeting::query()->create(Arr::except($attributes, 'entries'));
+
+            $now = now();
+            $rows = array_map(
+                fn (array $entry, int $index): array => [
+                    'daily_meeting_id' => $meeting->id,
+                    'team_id' => $meeting->team_id,
+                    'person_id' => $entry['person_id'],
+                    'speaking_order' => $index,
+                    'allotted_seconds' => $meeting->time_limit_seconds,
+                    'actual_seconds' => $entry['actual_seconds'],
+                    'note_type' => $entry['note_type'] ?? null,
+                    'note' => $entry['note'] ?? null,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ],
+                $attributes['entries'],
+                array_keys($attributes['entries']),
+            );
+
+            DailyMeetingEntry::query()->insert($rows);
+
+            return $meeting->load('entries');
+        });
+    }
+}

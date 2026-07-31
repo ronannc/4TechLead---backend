@@ -65,7 +65,7 @@ trait CrudControllerTrait
 
         $model = $this->resolveStoreService()->store($this->validateWith($this->storeRequest));
 
-        return new ($this->resourceClass())($model)->response()->setStatusCode(201);
+        return (new ($this->resourceClass())($model))->response()->setStatusCode(201);
     }
 
     public function show(int|string $id): JsonResponse
@@ -74,7 +74,7 @@ trait CrudControllerTrait
 
         $this->authorize('view', $model);
 
-        return new ($this->resourceClass())($model)->response();
+        return (new ($this->resourceClass())($model))->response();
     }
 
     public function update(int|string $id): JsonResponse
@@ -85,7 +85,7 @@ trait CrudControllerTrait
 
         $model = $this->resolveUpdateService()->update($model, $this->validateWith($this->updateRequest));
 
-        return new ($this->resourceClass())($model)->response();
+        return (new ($this->resourceClass())($model))->response();
     }
 
     public function destroy(int|string $id): JsonResponse
