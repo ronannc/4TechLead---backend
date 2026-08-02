@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'name',
@@ -34,6 +35,30 @@ class Person extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
+    }
+
+    /**
+     * @return HasMany<OneOnOneSession, $this>
+     */
+    public function oneOnOneSessions(): HasMany
+    {
+        return $this->hasMany(OneOnOneSession::class);
+    }
+
+    /**
+     * @return HasMany<DevelopmentPlan, $this>
+     */
+    public function developmentPlans(): HasMany
+    {
+        return $this->hasMany(DevelopmentPlan::class);
+    }
+
+    /**
+     * @return HasMany<Okr, $this>
+     */
+    public function okrs(): HasMany
+    {
+        return $this->hasMany(Okr::class);
     }
 
     /**
