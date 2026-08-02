@@ -28,13 +28,16 @@ class UpdatePersonRequest extends FormRequest
         return [
             'name' => ['sometimes', 'string', 'max:255'],
             'team_id' => ['sometimes', 'integer', 'exists:teams,id'],
-            'birth_date' => ['sometimes', 'date', 'before:today'],
+            'birth_date' => ['sometimes', 'nullable', 'date', 'before:today'],
             'position' => ['sometimes', 'string', 'max:255'],
             'contract_type' => ['sometimes', Rule::enum(ContractType::class)],
-            // No `after:birth_date` here (unlike Store) — a partial update may send
-            // `admission_date` without `birth_date` in the same payload, and the cross-field
-            // rule would then compare against a missing value.
-            'admission_date' => ['sometimes', 'date', 'before_or_equal:today'],
+            'admission_date' => [
+                'sometimes',
+                'nullable',
+                'date',
+                'before_or_equal:today',
+                Rule::when($this->filled('birth_date'), ['after:birth_date']),
+            ],
             'seniority' => ['sometimes', Rule::enum(SeniorityLevel::class)],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],

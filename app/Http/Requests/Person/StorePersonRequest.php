@@ -28,10 +28,15 @@ class StorePersonRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'team_id' => ['required', 'integer', 'exists:teams,id'],
-            'birth_date' => ['required', 'date', 'before:today'],
+            'birth_date' => ['nullable', 'date', 'before:today'],
             'position' => ['required', 'string', 'max:255'],
             'contract_type' => ['required', Rule::enum(ContractType::class)],
-            'admission_date' => ['required', 'date', 'before_or_equal:today', 'after:birth_date'],
+            'admission_date' => [
+                'nullable',
+                'date',
+                'before_or_equal:today',
+                Rule::when($this->filled('birth_date'), ['after:birth_date']),
+            ],
             'seniority' => ['required', Rule::enum(SeniorityLevel::class)],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],

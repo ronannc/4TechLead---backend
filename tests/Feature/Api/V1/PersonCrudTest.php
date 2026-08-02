@@ -87,6 +87,22 @@ it('creates a person linked to an existing team', function () {
         ->assertJsonPath('data.seniority', 'senior');
 });
 
+it('creates a person without birth_date or admission_date', function () {
+    $team = Team::factory()->create();
+
+    $payload = validPersonPayload($team->id, [
+        'birth_date' => null,
+        'admission_date' => null,
+    ]);
+
+    $this->actingAs(User::factory()->create(), 'sanctum')
+        ->postJson('/api/v1/people', $payload)
+        ->assertCreated()
+        ->assertJsonPath('data.birth_date', null)
+        ->assertJsonPath('data.admission_date', null)
+        ->assertJsonPath('data.age', null);
+});
+
 it('rejects a person with a non-existent team_id', function () {
     $this->actingAs(User::factory()->create(), 'sanctum')
         ->postJson('/api/v1/people', validPersonPayload(999999))
