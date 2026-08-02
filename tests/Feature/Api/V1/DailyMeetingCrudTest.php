@@ -6,10 +6,9 @@ use App\Models\Person;
 use App\Models\Team;
 use App\Models\User;
 
-function validDailyMeetingPayload(int $teamId, array $personIds, array $overrides = []): array
+function validDailyMeetingPayload(array $personIds, array $overrides = []): array
 {
     return array_merge([
-        'team_id' => $teamId,
         'time_limit_seconds' => 90,
         'started_at' => now()->subMinutes(15)->toIso8601String(),
         'ended_at' => now()->toIso8601String(),
@@ -25,7 +24,7 @@ it('creates a daily meeting with its entries in one request', function () {
     $people = Person::factory()->count(3)->create(['team_id' => $team->id]);
 
     $response = $this->actingAs(User::factory()->create(), 'sanctum')
-        ->postJson('/api/v1/daily-meetings', validDailyMeetingPayload($team->id, $people->pluck('id')->all()))
+        ->postJson('/api/v1/daily-meetings', validDailyMeetingPayload($people->pluck('id')->all()))
         ->assertCreated();
 
     $response->assertJsonPath('data.team_id', $team->id)
@@ -51,7 +50,7 @@ it('saves a categorized note on an entry', function () {
     $team = Team::factory()->create();
     $person = Person::factory()->create(['team_id' => $team->id]);
 
-    $payload = validDailyMeetingPayload($team->id, [$person->id]);
+    $payload = validDailyMeetingPayload([$person->id]);
     $payload['entries'][0]['note_type'] = 'impedimento';
     $payload['entries'][0]['note'] = 'Bloqueado esperando review de PR.';
 
@@ -66,7 +65,7 @@ it('rejects a note without a note_type', function () {
     $team = Team::factory()->create();
     $person = Person::factory()->create(['team_id' => $team->id]);
 
-    $payload = validDailyMeetingPayload($team->id, [$person->id]);
+    $payload = validDailyMeetingPayload([$person->id]);
     $payload['entries'][0]['note'] = 'Alguma anotação.';
 
     $this->actingAs(User::factory()->create(), 'sanctum')
@@ -75,22 +74,38 @@ it('rejects a note without a note_type', function () {
         ->assertJsonValidationErrors('entries.0.note_type');
 });
 
-it('rejects an entry for a person from a different team', function () {
+it('creates a daily meeting with people from different teams', function () {
     $team = Team::factory()->create();
     $otherTeam = Team::factory()->create();
+    $person = Person::factory()->create(['team_id' => $team->id]);
     $outsider = Person::factory()->create(['team_id' => $otherTeam->id]);
 
-    $this->actingAs(User::factory()->create(), 'sanctum')
-        ->postJson('/api/v1/daily-meetings', validDailyMeetingPayload($team->id, [$outsider->id]))
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('entries.0.person_id');
+    $response = $this->actingAs(User::factory()->create(), 'sanctum')
+        ->postJson('/api/v1/daily-meetings', validDailyMeetingPayload([$person->id, $outsider->id]))
+        ->assertCreated();
+
+    $meetingId = $response->json('data.id');
+
+    $response->assertJsonPath('data.team_id', null)
+        ->assertJsonCount(2, 'data.entries');
+
+    $this->assertDatabaseHas('daily_meeting_entries', [
+        'daily_meeting_id' => $meetingId,
+        'team_id' => $team->id,
+        'person_id' => $person->id,
+    ]);
+    $this->assertDatabaseHas('daily_meeting_entries', [
+        'daily_meeting_id' => $meetingId,
+        'team_id' => $otherTeam->id,
+        'person_id' => $outsider->id,
+    ]);
 });
 
 it('rejects duplicate person_id entries', function () {
     $team = Team::factory()->create();
     $person = Person::factory()->create(['team_id' => $team->id]);
 
-    $payload = validDailyMeetingPayload($team->id, [$person->id, $person->id]);
+    $payload = validDailyMeetingPayload([$person->id, $person->id]);
 
     $this->actingAs(User::factory()->create(), 'sanctum')
         ->postJson('/api/v1/daily-meetings', $payload)
@@ -101,7 +116,7 @@ it('rejects a time_limit_seconds below 60', function () {
     $team = Team::factory()->create();
     $person = Person::factory()->create(['team_id' => $team->id]);
 
-    $payload = validDailyMeetingPayload($team->id, [$person->id], ['time_limit_seconds' => 59]);
+    $payload = validDailyMeetingPayload([$person->id], ['time_limit_seconds' => 59]);
 
     $this->actingAs(User::factory()->create(), 'sanctum')
         ->postJson('/api/v1/daily-meetings', $payload)
@@ -113,7 +128,7 @@ it('rejects a time_limit_seconds that is not a multiple of 30', function () {
     $team = Team::factory()->create();
     $person = Person::factory()->create(['team_id' => $team->id]);
 
-    $payload = validDailyMeetingPayload($team->id, [$person->id], ['time_limit_seconds' => 61]);
+    $payload = validDailyMeetingPayload([$person->id], ['time_limit_seconds' => 61]);
 
     $this->actingAs(User::factory()->create(), 'sanctum')
         ->postJson('/api/v1/daily-meetings', $payload)
@@ -125,7 +140,7 @@ it('accepts a time_limit_seconds that is a multiple of 30', function () {
     $team = Team::factory()->create();
     $person = Person::factory()->create(['team_id' => $team->id]);
 
-    $payload = validDailyMeetingPayload($team->id, [$person->id], ['time_limit_seconds' => 120]);
+    $payload = validDailyMeetingPayload([$person->id], ['time_limit_seconds' => 120]);
 
     $this->actingAs(User::factory()->create(), 'sanctum')
         ->postJson('/api/v1/daily-meetings', $payload)

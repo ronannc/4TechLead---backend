@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('daily_meetings', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('team_id')->nullable()->constrained()->nullOnDelete();
             $table->unsignedInteger('time_limit_seconds');
             $table->dateTime('started_at');
             $table->dateTime('ended_at');

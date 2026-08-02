@@ -36,15 +36,18 @@ class DailyMeetingEntryFactory extends Factory
     }
 
     /**
-     * Derives team_id/daily_meeting_id from an existing meeting, and person_id from a person on that
-     * same team, so the entry is internally consistent (never a person from a different team).
+     * Derives daily_meeting_id from an existing meeting and keeps team_id aligned with the person.
      */
     public function forMeeting(DailyMeeting $meeting, ?Person $person = null): static
     {
+        $person ??= Person::factory()->create([
+            'team_id' => $meeting->team_id ?? Team::factory()->create()->id,
+        ]);
+
         return $this->state(fn (): array => [
             'daily_meeting_id' => $meeting->id,
-            'team_id' => $meeting->team_id,
-            'person_id' => $person?->id ?? Person::factory(['team_id' => $meeting->team_id]),
+            'team_id' => $person->team_id,
+            'person_id' => $person->id,
         ]);
     }
 }

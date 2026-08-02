@@ -30,7 +30,6 @@ class StoreDailyMeetingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'team_id' => ['required', 'integer', 'exists:teams,id'],
             'time_limit_seconds' => [
                 'required',
                 'integer',
@@ -48,7 +47,7 @@ class StoreDailyMeetingRequest extends FormRequest
                 'required',
                 'integer',
                 'distinct',
-                Rule::exists('people', 'id')->where('team_id', $this->input('team_id')),
+                Rule::exists('people', 'id'),
             ],
             'entries.*.actual_seconds' => ['required', 'integer', 'min:0'],
             'entries.*.note_type' => [

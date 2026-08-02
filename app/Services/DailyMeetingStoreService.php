@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\Services\StoreServiceContract;
 use App\Models\DailyMeeting;
 use App\Models\DailyMeetingEntry;
+use App\Models\Person;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -26,13 +27,21 @@ final class DailyMeetingStoreService implements StoreServiceContract
     public function store(array $attributes): Model
     {
         return DB::transaction(function () use ($attributes): DailyMeeting {
-            $meeting = DailyMeeting::query()->create(Arr::except($attributes, 'entries'));
+            $personTeamIds = Person::query()
+                ->whereIn('id', Arr::pluck($attributes['entries'], 'person_id'))
+                ->pluck('team_id', 'id');
+
+            $meetingAttributes = Arr::except($attributes, 'entries');
+            $uniqueTeamIds = $personTeamIds->unique()->values();
+            $meetingAttributes['team_id'] = $uniqueTeamIds->count() === 1 ? $uniqueTeamIds->first() : null;
+
+            $meeting = DailyMeeting::query()->create($meetingAttributes);
 
             $now = now();
             $rows = array_map(
                 fn (array $entry, int $index): array => [
                     'daily_meeting_id' => $meeting->id,
-                    'team_id' => $meeting->team_id,
+                    'team_id' => $personTeamIds[$entry['person_id']],
                     'person_id' => $entry['person_id'],
                     'speaking_order' => $index,
                     'allotted_seconds' => $meeting->time_limit_seconds,
