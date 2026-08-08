@@ -28,7 +28,8 @@ Route::prefix('auth')->group(function (): void {
     });
 });
 
-Route::post('integration-webhooks/{integrationSystem}', IntegrationWebhookController::class);
+Route::post('integration-webhooks/{integrationSystem}', IntegrationWebhookController::class)
+    ->middleware('throttle:60,1');
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::apiResource('teams', TeamController::class);

@@ -48,6 +48,23 @@ it('maps an external identity to a person', function (): void {
         ->assertJsonPath('data.external_code', 'lucas-github');
 });
 
+it('rejects duplicate external identity codes for the same integration system', function (): void {
+    Sanctum::actingAs(User::factory()->create());
+
+    $integration = IntegrationSystem::factory()->create();
+    PersonExternalIdentity::factory()->create([
+        'integration_system_id' => $integration->id,
+        'external_code' => 'lucas-github',
+    ]);
+
+    $this->postJson('/api/v1/person-external-identities', [
+        'person_id' => Person::factory()->create()->id,
+        'integration_system_id' => $integration->id,
+        'external_code' => 'lucas-github',
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors('external_code');
+});
+
 it('receives a github pull request webhook and creates delivery metrics for the mapped person', function (): void {
     $token = 'github-secret-token';
     $integration = IntegrationSystem::factory()->create([
@@ -121,8 +138,33 @@ it('rejects webhooks with an invalid token', function (): void {
 
     $this->postJson("/api/v1/integration-webhooks/{$integration->id}", githubPullRequestPayload(), [
         'Authorization' => 'Bearer invalid-token',
-    ])->assertUnprocessable()
-        ->assertJsonValidationErrors('token');
+    ])->assertUnauthorized();
+});
+
+it('rejects webhooks for inactive integrations', function (): void {
+    $token = 'github-secret-token';
+    $integration = IntegrationSystem::factory()->create([
+        'active' => false,
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+
+    $this->postJson("/api/v1/integration-webhooks/{$integration->id}", githubPullRequestPayload(), [
+        'Authorization' => "Bearer {$token}",
+    ])->assertForbidden();
+});
+
+it('accepts integration tokens through the x integration token header', function (): void {
+    $token = 'github-secret-token';
+    $integration = IntegrationSystem::factory()->create([
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+
+    $this->postJson("/api/v1/integration-webhooks/{$integration->id}", githubPullRequestPayload(), [
+        'X-Integration-Token' => $token,
+    ])->assertOk()
+        ->assertJsonPath('data.status', 'unmapped_person');
 });
 
 it('stores unmapped webhook events without generating metrics', function (): void {

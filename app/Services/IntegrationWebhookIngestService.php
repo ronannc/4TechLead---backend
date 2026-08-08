@@ -7,7 +7,9 @@ use App\Models\IntegrationWebhookEvent;
 use App\Models\PersonDeliveryMetric;
 use App\Models\PersonExternalIdentity;
 use Illuminate\Support\Arr;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
 
 class IntegrationWebhookIngestService
 {
@@ -18,57 +20,54 @@ class IntegrationWebhookIngestService
     {
         $this->assertCanReceive($integrationSystem, $token);
 
-        $existingEvent = IntegrationWebhookEvent::query()
-            ->where('integration_system_id', $integrationSystem->id)
-            ->where('event_id', $data['event_id'])
-            ->first();
+        return DB::transaction(function () use ($integrationSystem, $data): IntegrationWebhookEvent {
+            $identity = PersonExternalIdentity::query()
+                ->where('integration_system_id', $integrationSystem->id)
+                ->where('external_code', $data['external_actor_code'])
+                ->where('active', true)
+                ->first();
 
-        if ($existingEvent !== null) {
-            return $existingEvent;
-        }
+            $normalizedPayload = $this->normalize($data);
 
-        $identity = PersonExternalIdentity::query()
-            ->where('integration_system_id', $integrationSystem->id)
-            ->where('external_code', $data['external_actor_code'])
-            ->where('active', true)
-            ->first();
+            $event = IntegrationWebhookEvent::query()->createOrFirst(
+                [
+                    'integration_system_id' => $integrationSystem->id,
+                    'event_id' => $data['event_id'],
+                ],
+                [
+                    'person_id' => $identity?->person_id,
+                    'event_type' => $data['event_type'],
+                    'external_actor_code' => $data['external_actor_code'],
+                    'status' => $identity === null ? 'unmapped_person' : 'processed',
+                    'failure_reason' => $identity === null ? 'No active person mapping for external code.' : null,
+                    'payload' => $data['payload'],
+                    'normalized_payload' => $normalizedPayload,
+                    'received_at' => now(),
+                ],
+            );
 
-        $normalizedPayload = $this->normalize($data);
+            if (! $event->wasRecentlyCreated) {
+                return $event;
+            }
 
-        $event = IntegrationWebhookEvent::query()->create([
-            'integration_system_id' => $integrationSystem->id,
-            'person_id' => $identity?->person_id,
-            'event_id' => $data['event_id'],
-            'event_type' => $data['event_type'],
-            'external_actor_code' => $data['external_actor_code'],
-            'status' => $identity === null ? 'unmapped_person' : 'processed',
-            'failure_reason' => $identity === null ? 'No active person mapping for external code.' : null,
-            'payload' => $data['payload'],
-            'normalized_payload' => $normalizedPayload,
-            'received_at' => now(),
-        ]);
+            $integrationSystem->forceFill(['last_received_at' => now()])->save();
 
-        $integrationSystem->forceFill(['last_received_at' => now()])->save();
+            if ($identity !== null) {
+                $this->createMetrics($event, $normalizedPayload, $data);
+            }
 
-        if ($identity !== null) {
-            $this->createMetrics($event, $normalizedPayload, $data);
-        }
-
-        return $event->refresh();
+            return $event->refresh();
+        });
     }
 
     protected function assertCanReceive(IntegrationSystem $integrationSystem, string $token): void
     {
         if (! $integrationSystem->active) {
-            throw ValidationException::withMessages([
-                'integration' => ['Integration is inactive.'],
-            ]);
+            throw new AccessDeniedHttpException('Integration is inactive.');
         }
 
         if ($token === '' || ! hash_equals($integrationSystem->token_hash, hash('sha256', $token))) {
-            throw ValidationException::withMessages([
-                'token' => ['Invalid integration token.'],
-            ]);
+            throw new UnauthorizedHttpException('Bearer', 'Invalid integration token.');
         }
     }
 
@@ -147,11 +146,12 @@ class IntegrationWebhookIngestService
         }
 
         foreach ($metrics as [$type, $value, $unit]) {
-            PersonDeliveryMetric::query()->create([
-                'person_id' => $event->person_id,
-                'integration_system_id' => $event->integration_system_id,
+            PersonDeliveryMetric::query()->createOrFirst([
                 'integration_webhook_event_id' => $event->id,
                 'metric_type' => $type,
+            ], [
+                'person_id' => $event->person_id,
+                'integration_system_id' => $event->integration_system_id,
                 'metric_value' => $value,
                 'unit' => $unit,
                 'source_ref' => $normalizedPayload['source_ref'] ?? $data['source_ref'] ?? null,
