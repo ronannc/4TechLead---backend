@@ -62,6 +62,22 @@ class Person extends Model
     }
 
     /**
+     * @return HasMany<PersonExternalIdentity, $this>
+     */
+    public function externalIdentities(): HasMany
+    {
+        return $this->hasMany(PersonExternalIdentity::class);
+    }
+
+    /**
+     * @return HasMany<PersonDeliveryMetric, $this>
+     */
+    public function deliveryMetrics(): HasMany
+    {
+        return $this->hasMany(PersonDeliveryMetric::class);
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
