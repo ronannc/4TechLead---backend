@@ -375,6 +375,30 @@ other resource, but neither is a plain CRUD module:
   `cascadeOnDelete()`) — this is historical data, so deleting a Team/Person must never silently erase
   past daily records.
 
+## External integrations and webhooks
+
+External systems are registered through authenticated CRUD at `integration-systems`; each create uses
+`IntegrationSystemStoreService` to generate a one-time plaintext token, store only `token_hash`, and
+return the token only in the creation response. Do not generate tokens or apply side effects directly in
+controllers.
+
+`POST /api/v1/integration-webhooks/{integrationSystem}` is intentionally public because GitHub, ClickUp,
+and similar systems call it without Sanctum. It must keep explicit operational guards: throttle middleware,
+active integration check, and token validation from either `Authorization: Bearer ...` or
+`X-Integration-Token`. Invalid credentials return 401; inactive integrations return 403; malformed payloads
+remain 422.
+
+Webhook ingestion belongs in `IntegrationWebhookIngestService`. It must persist the raw event, normalize the
+payload, update `last_received_at`, and generate `PersonDeliveryMetric` records in one transaction.
+Idempotency is enforced by the database unique key on `(integration_system_id, event_id)` and code should use
+concurrency-safe create-or-return behavior rather than a separate `first()` then `create()` sequence. Metrics
+are keyed by `(integration_webhook_event_id, metric_type)` and should also be safe to replay.
+
+External actor mapping goes through `person-external-identities`; the pair `(integration_system_id,
+external_code)` is unique and must be validated in Form Requests before hitting the database. Public ingest
+tests should cover success, invalid token, inactive integration, alternate token header, unmapped people, and
+idempotent replay.
+
 ## Authentication (Sanctum bearer tokens)
 
 Auth is `laravel/sanctum` (v4) using **personal access tokens** (`Authorization: Bearer <token>`), not
