@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\Services\StoreServiceContract;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 final class GenericStoreService implements StoreServiceContract
 {
@@ -15,6 +16,8 @@ final class GenericStoreService implements StoreServiceContract
 
     /**
      * @param  array<string, mixed>  $attributes
+     *
+     * @throws Throwable
      */
     public function store(array $attributes): Model
     {

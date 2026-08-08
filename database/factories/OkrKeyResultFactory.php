@@ -20,6 +20,7 @@ class OkrKeyResultFactory extends Factory
             'okr_id' => Okr::factory(),
             'title' => fake()->sentence(5),
             'metric_name' => fake()->randomElement(['PRs revisados', 'Ações concluídas', 'Feedbacks']),
+            'data_source' => fake()->randomElement(['manual', 'pull_requests', 'tasks', 'dailies']),
             'initial_value' => 0,
             'current_value' => fake()->numberBetween(0, 5),
             'target_value' => fake()->numberBetween(6, 10),

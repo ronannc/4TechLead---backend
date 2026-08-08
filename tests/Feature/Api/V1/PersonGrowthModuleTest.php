@@ -112,11 +112,12 @@ it('manages okrs and measurable key results', function () {
 
     $okrId = $okrResponse->json('data.id');
 
-    $this->actingAs(User::factory()->create(), 'sanctum')
+    $keyResultResponse = $this->actingAs(User::factory()->create(), 'sanctum')
         ->postJson('/api/v1/okr-key-results', [
             'okr_id' => $okrId,
             'title' => 'Concluir ações do PDI',
             'metric_name' => 'Ações concluídas',
+            'data_source' => 'tasks',
             'initial_value' => 0,
             'current_value' => 1,
             'target_value' => 4,
@@ -126,7 +127,19 @@ it('manages okrs and measurable key results', function () {
             'progress' => 25,
         ])
         ->assertCreated()
-        ->assertJsonPath('data.metric_name', 'Ações concluídas');
+        ->assertJsonPath('data.metric_name', 'Ações concluídas')
+        ->assertJsonPath('data.data_source', 'tasks');
+
+    $this->actingAs(User::factory()->create(), 'sanctum')
+        ->putJson("/api/v1/okr-key-results/{$keyResultResponse->json('data.id')}", [
+            'current_value' => 2,
+            'data_source' => 'pull_requests',
+            'progress' => 50,
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.current_value', '2.00')
+        ->assertJsonPath('data.data_source', 'pull_requests')
+        ->assertJsonPath('data.progress', 50);
 
     $this->actingAs(User::factory()->create(), 'sanctum')
         ->getJson("/api/v1/okrs?filters[person_id]={$person->id}&search=autonomia")

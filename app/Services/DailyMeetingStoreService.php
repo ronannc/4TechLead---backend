@@ -9,6 +9,7 @@ use App\Models\Person;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
  * The project's first custom Store service: creating a DailyMeeting also creates every one of its
@@ -23,6 +24,8 @@ final class DailyMeetingStoreService implements StoreServiceContract
 {
     /**
      * @param  array<string, mixed>  $attributes
+     *
+     * @throws Throwable
      */
     public function store(array $attributes): Model
     {

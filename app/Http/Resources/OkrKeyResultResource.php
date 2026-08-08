@@ -19,6 +19,7 @@ class OkrKeyResultResource extends JsonResource
             'okr_id' => $this->okr_id,
             'title' => $this->title,
             'metric_name' => $this->metric_name,
+            'data_source' => $this->data_source,
             'initial_value' => $this->initial_value,
             'current_value' => $this->current_value,
             'target_value' => $this->target_value,

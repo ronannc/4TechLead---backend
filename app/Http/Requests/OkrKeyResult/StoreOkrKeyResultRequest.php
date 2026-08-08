@@ -21,6 +21,7 @@ class StoreOkrKeyResultRequest extends FormRequest
             'okr_id' => ['required', 'integer', 'exists:okrs,id'],
             'title' => ['required', 'string', 'max:255'],
             'metric_name' => ['nullable', 'string', 'max:255'],
+            'data_source' => ['sometimes', 'string', 'in:manual,pull_requests,tasks,dailies'],
             'initial_value' => ['nullable', 'numeric'],
             'current_value' => ['nullable', 'numeric'],
             'target_value' => ['nullable', 'numeric'],

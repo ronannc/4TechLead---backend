@@ -21,6 +21,7 @@ class UpdateOkrKeyResultRequest extends FormRequest
             'okr_id' => ['sometimes', 'integer', 'exists:okrs,id'],
             'title' => ['sometimes', 'string', 'max:255'],
             'metric_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'data_source' => ['sometimes', 'string', 'in:manual,pull_requests,tasks,dailies'],
             'initial_value' => ['sometimes', 'nullable', 'numeric'],
             'current_value' => ['sometimes', 'nullable', 'numeric'],
             'target_value' => ['sometimes', 'nullable', 'numeric'],

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'okr_id',
     'title',
     'metric_name',
+    'data_source',
     'initial_value',
     'current_value',
     'target_value',
