@@ -58,11 +58,11 @@ it('regenerates an integration webhook token and invalidates the old token', fun
     expect($integration->token_hash)->toBe(hash('sha256', $newToken));
     expect($integration->token_prefix)->toBe(substr($newToken, 0, 8));
 
-    $this->postJson("/api/v1/integration-webhooks/{$integration->id}", githubPullRequestPayload(), [
+    $this->postJson('/api/v1/integration-webhooks', githubPullRequestPayload(), [
         'Authorization' => "Bearer {$oldToken}",
     ])->assertUnauthorized();
 
-    $this->postJson("/api/v1/integration-webhooks/{$integration->id}", githubPullRequestPayload(), [
+    $this->postJson('/api/v1/integration-webhooks', githubPullRequestPayload(), [
         'Authorization' => "Bearer {$newToken}",
     ])->assertOk()
         ->assertJsonPath('data.status', 'unmapped_person');
@@ -123,7 +123,7 @@ it('receives a github pull request webhook and creates delivery metrics for the 
     $payload = githubPullRequestPayload();
 
     $this->postJson(
-        "/api/v1/integration-webhooks/{$integration->id}",
+        '/api/v1/integration-webhooks',
         $payload,
         ['Authorization' => "Bearer {$token}"],
     )->assertOk()
@@ -193,10 +193,10 @@ it('does not duplicate metrics when the same webhook event is received again', f
 
     $payload = githubPullRequestPayload();
 
-    $this->postJson("/api/v1/integration-webhooks/{$integration->id}", $payload, [
+    $this->postJson('/api/v1/integration-webhooks', $payload, [
         'Authorization' => "Bearer {$token}",
     ])->assertOk();
-    $this->postJson("/api/v1/integration-webhooks/{$integration->id}", $payload, [
+    $this->postJson('/api/v1/integration-webhooks', $payload, [
         'Authorization' => "Bearer {$token}",
     ])->assertOk();
 
@@ -209,7 +209,7 @@ it('rejects webhooks with an invalid token', function (): void {
         'token_prefix' => 'valid-to',
     ]);
 
-    $this->postJson("/api/v1/integration-webhooks/{$integration->id}", githubPullRequestPayload(), [
+    $this->postJson('/api/v1/integration-webhooks', githubPullRequestPayload(), [
         'Authorization' => 'Bearer invalid-token',
     ])->assertUnauthorized();
 });
@@ -222,7 +222,7 @@ it('rejects webhooks for inactive integrations', function (): void {
         'token_prefix' => substr($token, 0, 8),
     ]);
 
-    $this->postJson("/api/v1/integration-webhooks/{$integration->id}", githubPullRequestPayload(), [
+    $this->postJson('/api/v1/integration-webhooks', githubPullRequestPayload(), [
         'Authorization' => "Bearer {$token}",
     ])->assertForbidden();
 });
@@ -234,10 +234,45 @@ it('accepts integration tokens through the x integration token header', function
         'token_prefix' => substr($token, 0, 8),
     ]);
 
-    $this->postJson("/api/v1/integration-webhooks/{$integration->id}", githubPullRequestPayload(), [
+    $this->postJson('/api/v1/integration-webhooks', githubPullRequestPayload(), [
         'X-Integration-Token' => $token,
     ])->assertOk()
         ->assertJsonPath('data.status', 'unmapped_person');
+});
+
+it('resolves the integration from the bearer token without requiring the integration id in the path', function (): void {
+    $token = 'github-actions-project-token';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'github-actions',
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+    $person = Person::factory()->create();
+    PersonExternalIdentity::factory()->create([
+        'person_id' => $person->id,
+        'integration_system_id' => $integration->id,
+        'external_code' => 'lucas-github-id',
+    ]);
+
+    $payload = githubPullRequestPayload([
+        'event_id' => 'github-pr-43-merged',
+        'external_actor_code' => 'lucas-github-id',
+    ]);
+
+    $this->postJson('/api/v1/integration-webhooks', $payload, [
+        'Authorization' => "Bearer {$token}",
+    ])->assertOk()
+        ->assertJsonPath('data.integration_system_id', $integration->id)
+        ->assertJsonPath('data.person_id', $person->id)
+        ->assertJsonPath('data.status', 'processed');
+
+    expect(
+        PersonDeliveryMetric::query()
+            ->where('person_id', $person->id)
+            ->where('integration_system_id', $integration->id)
+            ->where('metric_type', 'pull_request_count')
+            ->exists(),
+    )->toBeTrue();
 });
 
 it('stores unmapped webhook events without generating metrics', function (): void {
@@ -247,7 +282,7 @@ it('stores unmapped webhook events without generating metrics', function (): voi
         'token_prefix' => substr($token, 0, 8),
     ]);
 
-    $this->postJson("/api/v1/integration-webhooks/{$integration->id}", githubPullRequestPayload(), [
+    $this->postJson('/api/v1/integration-webhooks', githubPullRequestPayload(), [
         'Authorization' => "Bearer {$token}",
     ])->assertOk()
         ->assertJsonPath('data.status', 'unmapped_person')
@@ -259,9 +294,9 @@ it('stores unmapped webhook events without generating metrics', function (): voi
 /**
  * @return array<string, mixed>
  */
-function githubPullRequestPayload(): array
+function githubPullRequestPayload(array $overrides = []): array
 {
-    return [
+    return array_replace_recursive([
         'event_id' => 'github-pr-42-merged',
         'event_type' => 'pull_request_merged',
         'external_actor_code' => 'lucas-github',
@@ -283,5 +318,5 @@ function githubPullRequestPayload(): array
                 'merged_at' => '2026-08-08T18:00:00Z',
             ],
         ],
-    ];
+    ], $overrides);
 }

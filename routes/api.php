@@ -30,8 +30,7 @@ Route::prefix('auth')->group(function (): void {
     });
 });
 
-Route::post('integration-webhooks/{integrationSystem}', IntegrationWebhookController::class)
-    ->middleware('throttle:60,1');
+Route::post('integration-webhooks', IntegrationWebhookController::class)->middleware('throttle:60,1');
 Route::post('notification-webhooks/{integrationSystem}', ExternalNotificationWebhookController::class)
     ->middleware('throttle:60,1');
 

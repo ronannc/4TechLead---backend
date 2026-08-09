@@ -17,6 +17,22 @@ class IntegrationWebhookIngestService
     /**
      * @param  array<string, mixed>  $data
      */
+    public function ingestByToken(string $token, array $data): IntegrationWebhookEvent
+    {
+        $integrationSystem = IntegrationSystem::query()
+            ->where('token_hash', hash('sha256', $token))
+            ->first();
+
+        if ($integrationSystem === null) {
+            throw new UnauthorizedHttpException('Bearer', 'Invalid integration token.');
+        }
+
+        return $this->ingest($integrationSystem, $token, $data);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
     public function ingest(IntegrationSystem $integrationSystem, string $token, array $data): IntegrationWebhookEvent
     {
         $this->assertCanReceive($integrationSystem, $token);
