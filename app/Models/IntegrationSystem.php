@@ -48,6 +48,14 @@ class IntegrationSystem extends Model
     }
 
     /**
+     * @return HasMany<ExternalNotification, $this>
+     */
+    public function externalNotifications(): HasMany
+    {
+        return $this->hasMany(ExternalNotification::class);
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
