@@ -20,7 +20,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'position',
     'contract_type',
     'email',
-    'phone',
     'admission_date',
     'seniority',
 ])]

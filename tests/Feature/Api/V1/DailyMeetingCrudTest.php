@@ -163,12 +163,14 @@ it('lists daily meetings filtered by team_id', function () {
 
 it('shows a daily meeting with its entries', function () {
     $meeting = DailyMeeting::factory()->create();
-    DailyMeetingEntry::factory()->forMeeting($meeting)->create();
+    $entry = DailyMeetingEntry::factory()->forMeeting($meeting)->create();
 
     $this->actingAs(User::factory()->create(), 'sanctum')
         ->getJson("/api/v1/daily-meetings/{$meeting->id}")
         ->assertOk()
-        ->assertJsonCount(1, 'data.entries');
+        ->assertJsonCount(1, 'data.entries')
+        ->assertJsonPath('data.entries.0.person.id', $entry->person_id)
+        ->assertJsonPath('data.entries.0.person.name', $entry->person->name);
 });
 
 it('does not route update or destroy for daily meetings', function () {

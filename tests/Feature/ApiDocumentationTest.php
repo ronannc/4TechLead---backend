@@ -63,6 +63,8 @@ it('serves API documentation through friendly Laravel routes', function (): void
         ->assertOk()
         ->assertJsonPath('openapi', '3.1.0')
         ->assertJsonPath('info.title', '4TechLead Integrations API')
+        ->assertJsonPath('servers.0.url', rtrim((string) config('app.url'), '/').'/api/v1')
+        ->assertJsonPath('servers.0.description', 'Current application environment')
         ->assertJsonPath('paths./auth/login.post.summary', 'Log in and receive an API token')
         ->assertJsonPath(
             'paths./integration-systems/{integrationSystem}/regenerate-token.post.summary',

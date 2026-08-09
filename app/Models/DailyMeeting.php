@@ -23,11 +23,11 @@ class DailyMeeting extends Model
 
     /**
      * Always eager-loaded — CrudControllerTrait/GenericIndexService do not eager-load relations
-     * themselves, and every consumer of this resource needs the entries.
+     * themselves, and every consumer of this resource needs the entries with names.
      *
      * @var array<int, string>
      */
-    protected $with = ['entries'];
+    protected $with = ['entries.person'];
 
     /**
      * @return BelongsTo<Team, $this>

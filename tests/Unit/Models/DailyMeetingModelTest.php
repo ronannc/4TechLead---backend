@@ -11,14 +11,15 @@ it('belongs to a team', function () {
     expect($meeting->team->id)->toBe($team->id);
 });
 
-it('eager-loads its entries by default', function () {
+it('eager-loads its entries and people by default', function () {
     $meeting = DailyMeeting::factory()->create();
     DailyMeetingEntry::factory()->forMeeting($meeting)->create();
 
     $fresh = DailyMeeting::query()->find($meeting->id);
 
     expect($fresh->relationLoaded('entries'))->toBeTrue()
-        ->and($fresh->entries)->toHaveCount(1);
+        ->and($fresh->entries)->toHaveCount(1)
+        ->and($fresh->entries->first()->relationLoaded('person'))->toBeTrue();
 });
 
 it('filters by team_id via the filter scope', function () {
