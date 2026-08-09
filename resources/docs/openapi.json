@@ -1,0 +1,1543 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "4TechLead Integrations API",
+        "version": "1.0.0",
+        "description": "API documentation for registering external systems, mapping people to external identifiers, receiving webhook events, and reading delivery metrics used by 4TechLead."
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8090/api/v1",
+            "description": "Local Docker environment"
+        }
+    ],
+    "tags": [
+        {
+            "name": "Authentication",
+            "description": "Create and manage Laravel Sanctum tokens used by the protected API endpoints."
+        },
+        {
+            "name": "Integration systems",
+            "description": "Authenticated management of systems that send webhook events."
+        },
+        {
+            "name": "External identities",
+            "description": "Authenticated mapping between a person and an external actor code."
+        },
+        {
+            "name": "Webhooks",
+            "description": "Public ingestion endpoint called by GitHub, ClickUp, or custom automations."
+        },
+        {
+            "name": "Delivery metrics",
+            "description": "Authenticated read-only metrics generated from webhook events."
+        }
+    ],
+    "paths": {
+        "/auth/register": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Register a user and receive an API token",
+                "description": "Use the returned `token` as `Authorization: Bearer <token>` in protected endpoints.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegisterRequest"
+                            },
+                            "examples": {
+                                "default": {
+                                    "value": {
+                                        "name": "Ada Lovelace",
+                                        "email": "ada@example.com",
+                                        "password": "password123",
+                                        "password_confirmation": "password123"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Registered user with API token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthTokenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Log in and receive an API token",
+                "description": "Use the returned `token` as `Authorization: Bearer <token>` in protected endpoints.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginRequest"
+                            },
+                            "examples": {
+                                "default": {
+                                    "value": {
+                                        "email": "ada@example.com",
+                                        "password": "password123"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Authenticated user with API token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthTokenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid credentials.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "example": {
+                                    "message": "These credentials do not match our records."
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Get the authenticated user",
+                "security": [
+                    {
+                        "sanctumBearer": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Current authenticated user.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/User"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Revoke the current API token",
+                "security": [
+                    {
+                        "sanctumBearer": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Current token revoked."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    }
+                }
+            }
+        },
+        "/integration-systems": {
+            "get": {
+                "tags": [
+                    "Integration systems"
+                ],
+                "summary": "List integration systems",
+                "security": [
+                    {
+                        "sanctumBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PerPage"
+                    },
+                    {
+                        "$ref": "#/components/parameters/Search"
+                    },
+                    {
+                        "name": "filters[provider]",
+                        "in": "query",
+                        "schema": {
+                            "$ref": "#/components/schemas/IntegrationProvider"
+                        },
+                        "example": "github"
+                    },
+                    {
+                        "name": "filters[active]",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "example": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated integration systems.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/IntegrationSystem"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Integration systems"
+                ],
+                "summary": "Create an integration system and receive a one-time webhook token",
+                "description": "The plaintext `webhook_token` is returned only in this creation response. Store it in the external system secret manager. Later reads expose only `token_prefix`.",
+                "security": [
+                    {
+                        "sanctumBearer": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreIntegrationSystemRequest"
+                            },
+                            "examples": {
+                                "github": {
+                                    "summary": "GitHub integration",
+                                    "value": {
+                                        "name": "GitHub Produto",
+                                        "provider": "github",
+                                        "description": "PRs e CI do time de produto."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Integration created. Save `webhook_token`; it will not be shown again.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/IntegrationSystemWithToken"
+                                        }
+                                    }
+                                },
+                                "examples": {
+                                    "created": {
+                                        "value": {
+                                            "data": {
+                                                "id": 1,
+                                                "name": "GitHub Produto",
+                                                "provider": "github",
+                                                "description": "PRs e CI do time de produto.",
+                                                "token_prefix": "AbC123xy",
+                                                "webhook_token": "AbC123xy-full-secret-token-value",
+                                                "active": true,
+                                                "last_received_at": null,
+                                                "created_at": "2026-08-08T18:00:00.000000Z",
+                                                "updated_at": "2026-08-08T18:00:00.000000Z"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/person-external-identities": {
+            "get": {
+                "tags": [
+                    "External identities"
+                ],
+                "summary": "List person external identity mappings",
+                "security": [
+                    {
+                        "sanctumBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PerPage"
+                    },
+                    {
+                        "$ref": "#/components/parameters/Search"
+                    },
+                    {
+                        "name": "filters[integration_system_id]",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 1
+                    },
+                    {
+                        "name": "filters[person_id]",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 10
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated external identities.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/PersonExternalIdentity"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "External identities"
+                ],
+                "summary": "Map an external actor code to a person",
+                "description": "`external_code` must match the value sent by the webhook in `external_actor_code`. The pair `integration_system_id + external_code` is unique.",
+                "security": [
+                    {
+                        "sanctumBearer": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StorePersonExternalIdentityRequest"
+                            },
+                            "examples": {
+                                "githubUser": {
+                                    "summary": "GitHub username mapping",
+                                    "value": {
+                                        "person_id": 10,
+                                        "integration_system_id": 1,
+                                        "external_code": "lucas-github",
+                                        "external_username": "Lucas Farias",
+                                        "metadata": {
+                                            "github_profile_url": "https://github.com/lucas-github"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "External identity mapping created.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/PersonExternalIdentity"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/integration-webhooks/{integrationSystem}": {
+            "post": {
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "Receive an external webhook event",
+                "description": "Public endpoint for external systems. Authenticate with either `Authorization: Bearer <webhook_token>` or `X-Integration-Token: <webhook_token>`. Events are idempotent by `event_id` per integration system.",
+                "security": [
+                    {
+                        "webhookBearer": []
+                    },
+                    {
+                        "webhookTokenHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "integrationSystem",
+                        "in": "path",
+                        "required": true,
+                        "description": "The integration system id created by `/integration-systems`.",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 1
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/IntegrationWebhookRequest"
+                            },
+                            "examples": {
+                                "githubPullRequestMerged": {
+                                    "summary": "GitHub pull request merged",
+                                    "value": {
+                                        "event_id": "github-pr-42-merged",
+                                        "event_type": "pull_request_merged",
+                                        "external_actor_code": "lucas-github",
+                                        "occurred_at": "2026-08-08T18:00:00Z",
+                                        "source_ref": "org/repo#42",
+                                        "payload": {
+                                            "task_refs": [
+                                                "ABC-123"
+                                            ],
+                                            "pull_request": {
+                                                "number": 42,
+                                                "title": "ABC-123 entregar fluxo de pagamentos",
+                                                "review_comments_count": 5,
+                                                "comments_count": 8,
+                                                "ci_failures_count": 1,
+                                                "rework_count": 1,
+                                                "story_points": 8,
+                                                "changed_files": 12,
+                                                "additions": 420,
+                                                "deletions": 80,
+                                                "merged_at": "2026-08-08T18:00:00Z"
+                                            }
+                                        }
+                                    }
+                                },
+                                "customDelivery": {
+                                    "summary": "Custom delivery event",
+                                    "value": {
+                                        "event_id": "clickup-task-ABC-123-done",
+                                        "event_type": "task_completed",
+                                        "external_actor_code": "lucas-clickup",
+                                        "occurred_at": "2026-08-08T19:15:00Z",
+                                        "source_ref": "ABC-123",
+                                        "payload": {
+                                            "task_refs": [
+                                                "ABC-123"
+                                            ],
+                                            "story_points": 5,
+                                            "rework_count": 0,
+                                            "comments_count": 2
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Event accepted. If `external_actor_code` is mapped, delivery metrics are generated.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/IntegrationWebhookEvent"
+                                        }
+                                    }
+                                },
+                                "examples": {
+                                    "processed": {
+                                        "value": {
+                                            "data": {
+                                                "id": 99,
+                                                "integration_system_id": 1,
+                                                "person_id": 10,
+                                                "event_id": "github-pr-42-merged",
+                                                "event_type": "pull_request_merged",
+                                                "external_actor_code": "lucas-github",
+                                                "status": "processed",
+                                                "failure_reason": null,
+                                                "payload": {
+                                                    "task_refs": [
+                                                        "ABC-123"
+                                                    ],
+                                                    "pull_request": {
+                                                        "number": 42,
+                                                        "review_comments_count": 5,
+                                                        "ci_failures_count": 1,
+                                                        "rework_count": 1,
+                                                        "story_points": 8
+                                                    }
+                                                },
+                                                "normalized_payload": {
+                                                    "event_type": "pull_request_merged",
+                                                    "source_ref": "org/repo#42",
+                                                    "occurred_at": "2026-08-08T18:00:00Z",
+                                                    "task_refs": [
+                                                        "ABC-123"
+                                                    ],
+                                                    "quality_score": 55,
+                                                    "review_comments_count": 5,
+                                                    "comments_count": 8,
+                                                    "ci_failures_count": 1,
+                                                    "rework_count": 1,
+                                                    "story_points": 8,
+                                                    "changed_files": 12,
+                                                    "additions": 420,
+                                                    "deletions": 80
+                                                },
+                                                "received_at": "2026-08-08T18:00:05.000000Z",
+                                                "created_at": "2026-08-08T18:00:05.000000Z",
+                                                "updated_at": "2026-08-08T18:00:05.000000Z"
+                                            }
+                                        }
+                                    },
+                                    "unmappedPerson": {
+                                        "value": {
+                                            "data": {
+                                                "id": 100,
+                                                "integration_system_id": 1,
+                                                "person_id": null,
+                                                "event_id": "github-pr-43-merged",
+                                                "event_type": "pull_request_merged",
+                                                "external_actor_code": "unknown-user",
+                                                "status": "unmapped_person",
+                                                "failure_reason": "No active person mapping for external code.",
+                                                "payload": [],
+                                                "normalized_payload": {
+                                                    "event_type": "pull_request_merged",
+                                                    "quality_score": 100,
+                                                    "review_comments_count": 0,
+                                                    "comments_count": 0,
+                                                    "ci_failures_count": 0,
+                                                    "rework_count": 0,
+                                                    "story_points": 0,
+                                                    "changed_files": 0,
+                                                    "additions": 0,
+                                                    "deletions": 0
+                                                },
+                                                "received_at": "2026-08-08T18:10:05.000000Z",
+                                                "created_at": "2026-08-08T18:10:05.000000Z",
+                                                "updated_at": "2026-08-08T18:10:05.000000Z"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid or missing webhook token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "example": {
+                                    "message": "Invalid integration token."
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Integration exists but is inactive.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "example": {
+                                    "message": "Integration is inactive."
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "example": {
+                                    "message": "Too Many Attempts."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/person-delivery-metrics": {
+            "get": {
+                "tags": [
+                    "Delivery metrics"
+                ],
+                "summary": "List delivery metrics generated from webhook events",
+                "security": [
+                    {
+                        "sanctumBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PerPage"
+                    },
+                    {
+                        "name": "filters[person_id]",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 10
+                    },
+                    {
+                        "name": "filters[integration_system_id]",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 1
+                    },
+                    {
+                        "name": "filters[metric_type]",
+                        "in": "query",
+                        "schema": {
+                            "$ref": "#/components/schemas/MetricType"
+                        },
+                        "example": "code_quality_score"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated delivery metrics.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/PersonDeliveryMetric"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "sanctumBearer": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "Laravel Sanctum token",
+                "description": "Application user token returned by `/auth/login` or `/auth/register`."
+            },
+            "webhookBearer": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "Integration webhook token",
+                "description": "One-time token returned when creating an integration system."
+            },
+            "webhookTokenHeader": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-Integration-Token",
+                "description": "Alternative header for the integration webhook token."
+            }
+        },
+        "parameters": {
+            "Page": {
+                "name": "page",
+                "in": "query",
+                "schema": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1
+                },
+                "example": 1
+            },
+            "PerPage": {
+                "name": "per_page",
+                "in": "query",
+                "schema": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 15
+                },
+                "example": 20
+            },
+            "Search": {
+                "name": "search",
+                "in": "query",
+                "schema": {
+                    "type": "string"
+                },
+                "example": "github"
+            }
+        },
+        "responses": {
+            "Unauthenticated": {
+                "description": "Missing, expired, or invalid application bearer token.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        },
+                        "example": {
+                            "message": "Unauthenticated."
+                        }
+                    }
+                }
+            },
+            "ValidationError": {
+                "description": "Laravel validation error.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ValidationErrorResponse"
+                        },
+                        "example": {
+                            "message": "The event id field is required.",
+                            "errors": {
+                                "event_id": [
+                                    "The event id field is required."
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "schemas": {
+            "RegisterRequest": {
+                "type": "object",
+                "required": [
+                    "name",
+                    "email",
+                    "password",
+                    "password_confirmation"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 255
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password",
+                        "minLength": 8
+                    },
+                    "password_confirmation": {
+                        "type": "string",
+                        "format": "password",
+                        "minLength": 8
+                    }
+                }
+            },
+            "LoginRequest": {
+                "type": "object",
+                "required": [
+                    "email",
+                    "password"
+                ],
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password"
+                    }
+                }
+            },
+            "User": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "email",
+                    "created_at"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "AuthTokenResponse": {
+                "type": "object",
+                "required": [
+                    "data",
+                    "token"
+                ],
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/User"
+                    },
+                    "token": {
+                        "type": "string",
+                        "description": "Laravel Sanctum bearer token. Use it in the Authorize button or Authorization header."
+                    }
+                }
+            },
+            "IntegrationProvider": {
+                "type": "string",
+                "enum": [
+                    "github",
+                    "clickup",
+                    "custom"
+                ]
+            },
+            "MetricType": {
+                "type": "string",
+                "enum": [
+                    "code_quality_score",
+                    "pull_request_count",
+                    "review_comments_count",
+                    "ci_failures_count",
+                    "rework_count",
+                    "changed_files_count",
+                    "delivery_points"
+                ]
+            },
+            "StoreIntegrationSystemRequest": {
+                "type": "object",
+                "required": [
+                    "name",
+                    "provider"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "provider": {
+                        "$ref": "#/components/schemas/IntegrationProvider"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "default": true
+                    }
+                }
+            },
+            "IntegrationSystem": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "provider",
+                    "token_prefix",
+                    "active",
+                    "created_at",
+                    "updated_at"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "provider": {
+                        "$ref": "#/components/schemas/IntegrationProvider"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "token_prefix": {
+                        "type": "string"
+                    },
+                    "active": {
+                        "type": "boolean"
+                    },
+                    "last_received_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "IntegrationSystemWithToken": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/IntegrationSystem"
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "webhook_token"
+                        ],
+                        "properties": {
+                            "webhook_token": {
+                                "type": "string",
+                                "description": "Plaintext token returned only once when creating the integration."
+                            }
+                        }
+                    }
+                ]
+            },
+            "StorePersonExternalIdentityRequest": {
+                "type": "object",
+                "required": [
+                    "person_id",
+                    "integration_system_id",
+                    "external_code"
+                ],
+                "properties": {
+                    "person_id": {
+                        "type": "integer"
+                    },
+                    "integration_system_id": {
+                        "type": "integer"
+                    },
+                    "external_code": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "description": "Code sent by the webhook in `external_actor_code`."
+                    },
+                    "external_username": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "metadata": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": true
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "default": true
+                    }
+                }
+            },
+            "PersonExternalIdentity": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "person_id",
+                    "integration_system_id",
+                    "external_code",
+                    "active"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "person_id": {
+                        "type": "integer"
+                    },
+                    "integration_system_id": {
+                        "type": "integer"
+                    },
+                    "external_code": {
+                        "type": "string"
+                    },
+                    "external_username": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "metadata": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": true
+                    },
+                    "active": {
+                        "type": "boolean"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "IntegrationWebhookRequest": {
+                "type": "object",
+                "required": [
+                    "event_id",
+                    "event_type",
+                    "external_actor_code",
+                    "payload"
+                ],
+                "properties": {
+                    "event_id": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "description": "Unique event id from the provider. Replays with the same id for the same integration do not duplicate metrics."
+                    },
+                    "event_type": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "examples": [
+                            "pull_request_merged",
+                            "task_completed"
+                        ]
+                    },
+                    "external_actor_code": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "description": "External user/code mapped to a person through `/person-external-identities`."
+                    },
+                    "occurred_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "source_ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255,
+                        "description": "Human-readable source reference, such as `org/repo#42` or task id."
+                    },
+                    "payload": {
+                        "type": "object",
+                        "required": [],
+                        "additionalProperties": true,
+                        "properties": {
+                            "task_refs": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "pull_request": {
+                                "$ref": "#/components/schemas/PullRequestPayload"
+                            },
+                            "review_comments_count": {
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "comments_count": {
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "ci_failures_count": {
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "rework_count": {
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "story_points": {
+                                "type": "number",
+                                "minimum": 0
+                            },
+                            "changed_files": {
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "additions": {
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "deletions": {
+                                "type": "integer",
+                                "minimum": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "PullRequestPayload": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                    "number": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "task_refs": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "review_comments_count": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "comments_count": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "ci_failures_count": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "rework_count": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "story_points": {
+                        "type": "number",
+                        "minimum": 0
+                    },
+                    "changed_files": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "additions": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "deletions": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "merged_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "IntegrationWebhookEvent": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "integration_system_id",
+                    "event_id",
+                    "event_type",
+                    "external_actor_code",
+                    "status",
+                    "payload",
+                    "normalized_payload",
+                    "received_at"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "integration_system_id": {
+                        "type": "integer"
+                    },
+                    "person_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "event_id": {
+                        "type": "string"
+                    },
+                    "event_type": {
+                        "type": "string"
+                    },
+                    "external_actor_code": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "processed",
+                            "unmapped_person"
+                        ]
+                    },
+                    "failure_reason": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "payload": {
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "normalized_payload": {
+                        "$ref": "#/components/schemas/NormalizedWebhookPayload"
+                    },
+                    "received_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "NormalizedWebhookPayload": {
+                "type": "object",
+                "required": [
+                    "event_type",
+                    "quality_score",
+                    "review_comments_count",
+                    "comments_count",
+                    "ci_failures_count",
+                    "rework_count",
+                    "story_points",
+                    "changed_files",
+                    "additions",
+                    "deletions"
+                ],
+                "properties": {
+                    "event_type": {
+                        "type": "string"
+                    },
+                    "source_ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "occurred_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "task_refs": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "quality_score": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "description": "Current heuristic: 100 - (ci_failures * 15) - (review_comments * 2) - (rework * 20), clamped between 0 and 100."
+                    },
+                    "review_comments_count": {
+                        "type": "integer"
+                    },
+                    "comments_count": {
+                        "type": "integer"
+                    },
+                    "ci_failures_count": {
+                        "type": "integer"
+                    },
+                    "rework_count": {
+                        "type": "integer"
+                    },
+                    "story_points": {
+                        "type": "number"
+                    },
+                    "changed_files": {
+                        "type": "integer"
+                    },
+                    "additions": {
+                        "type": "integer"
+                    },
+                    "deletions": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "PersonDeliveryMetric": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "person_id",
+                    "metric_type",
+                    "metric_value"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "person_id": {
+                        "type": "integer"
+                    },
+                    "integration_system_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "integration_webhook_event_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "metric_type": {
+                        "$ref": "#/components/schemas/MetricType"
+                    },
+                    "metric_value": {
+                        "type": "string",
+                        "description": "Decimal value returned by Laravel."
+                    },
+                    "unit": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "source_ref": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "period_start": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date"
+                    },
+                    "period_end": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date"
+                    },
+                    "occurred_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "metadata": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "required": [
+                    "message"
+                ],
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ValidationErrorResponse": {
+                "type": "object",
+                "required": [
+                    "message",
+                    "errors"
+                ],
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    },
+                    "errors": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

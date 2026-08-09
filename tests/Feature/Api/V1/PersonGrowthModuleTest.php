@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\DevelopmentPlan;
+use App\Models\Okr;
 use App\Models\Person;
 use App\Models\User;
 
@@ -174,4 +175,46 @@ it('rejects invalid progress values', function () {
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('progress');
+});
+
+it('rejects development plan partial updates that would invert the date range', function () {
+    $plan = DevelopmentPlan::factory()->create([
+        'start_date' => '2026-08-10',
+        'end_date' => '2026-09-10',
+    ]);
+
+    $this->actingAs(User::factory()->create(), 'sanctum')
+        ->putJson("/api/v1/development-plans/{$plan->id}", [
+            'end_date' => '2026-08-01',
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('end_date');
+
+    $this->actingAs(User::factory()->create(), 'sanctum')
+        ->putJson("/api/v1/development-plans/{$plan->id}", [
+            'start_date' => '2026-09-20',
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('end_date');
+});
+
+it('rejects okr partial updates that would invert the date range', function () {
+    $okr = Okr::factory()->create([
+        'start_date' => '2026-08-10',
+        'end_date' => '2026-09-10',
+    ]);
+
+    $this->actingAs(User::factory()->create(), 'sanctum')
+        ->putJson("/api/v1/okrs/{$okr->id}", [
+            'end_date' => '2026-08-01',
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('end_date');
+
+    $this->actingAs(User::factory()->create(), 'sanctum')
+        ->putJson("/api/v1/okrs/{$okr->id}", [
+            'start_date' => '2026-09-20',
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('end_date');
 });
