@@ -22,6 +22,7 @@ class DailyMeetingResource extends JsonResource
             'started_at' => $this->started_at,
             'ended_at' => $this->ended_at,
             'entries' => DailyMeetingEntryResource::collection($this->whenLoaded('entries')),
+            'annotations' => DailyMeetingAnnotationResource::collection($this->whenLoaded('annotations')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

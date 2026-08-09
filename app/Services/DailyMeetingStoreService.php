@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Contracts\Services\StoreServiceContract;
+use App\Enums\DailyAnnotationType;
 use App\Models\DailyMeeting;
+use App\Models\DailyMeetingAnnotation;
 use App\Models\DailyMeetingEntry;
 use App\Models\Person;
 use Illuminate\Database\Eloquent\Model;
@@ -34,7 +36,7 @@ final class DailyMeetingStoreService implements StoreServiceContract
                 ->whereIn('id', Arr::pluck($attributes['entries'], 'person_id'))
                 ->pluck('team_id', 'id');
 
-            $meetingAttributes = Arr::except($attributes, 'entries');
+            $meetingAttributes = Arr::except($attributes, ['entries', 'annotations']);
             $uniqueTeamIds = $personTeamIds->unique()->values();
             $meetingAttributes['team_id'] = $uniqueTeamIds->count() === 1 ? $uniqueTeamIds->first() : null;
 
@@ -49,8 +51,6 @@ final class DailyMeetingStoreService implements StoreServiceContract
                     'speaking_order' => $index,
                     'allotted_seconds' => $meeting->time_limit_seconds,
                     'actual_seconds' => $entry['actual_seconds'],
-                    'note_type' => $entry['note_type'] ?? null,
-                    'note' => $entry['note'] ?? null,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ],
@@ -60,7 +60,25 @@ final class DailyMeetingStoreService implements StoreServiceContract
 
             DailyMeetingEntry::query()->insert($rows);
 
-            return $meeting->load('entries');
+            $annotations = $attributes['annotations'] ?? [];
+            if ($annotations !== []) {
+                DailyMeetingAnnotation::query()->insert(array_map(
+                    fn (array $annotation): array => [
+                        'daily_meeting_id' => $meeting->id,
+                        'person_id' => $annotation['person_id'] ?? null,
+                        'type' => $annotation['type'],
+                        'text' => $annotation['text'],
+                        'resolved' => $annotation['type'] === DailyAnnotationType::Blocker->value
+                            ? (bool) ($annotation['resolved'] ?? false)
+                            : false,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ],
+                    $annotations,
+                ));
+            }
+
+            return $meeting->load(['entries', 'annotations']);
         });
     }
 }

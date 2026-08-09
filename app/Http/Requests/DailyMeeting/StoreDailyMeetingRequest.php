@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\DailyMeeting;
 
-use App\Enums\DailyNoteType;
+use App\Enums\DailyAnnotationType;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -50,12 +50,11 @@ class StoreDailyMeetingRequest extends FormRequest
                 Rule::exists('people', 'id'),
             ],
             'entries.*.actual_seconds' => ['required', 'integer', 'min:0'],
-            'entries.*.note_type' => [
-                'nullable',
-                Rule::enum(DailyNoteType::class),
-                'required_with:entries.*.note',
-            ],
-            'entries.*.note' => ['nullable', 'string', 'max:2000'],
+            'annotations' => ['sometimes', 'array'],
+            'annotations.*.type' => ['required', Rule::enum(DailyAnnotationType::class)],
+            'annotations.*.text' => ['required', 'string', 'max:2000'],
+            'annotations.*.person_id' => ['nullable', 'integer', Rule::exists('people', 'id')],
+            'annotations.*.resolved' => ['sometimes', 'boolean'],
         ];
     }
 }

@@ -1,6 +1,6 @@
 # ForTechLead Backend
 
-Laravel API used by the ForTechLead Flutter app. It owns authentication, teams, people, dailies, 1:1, PDI, OKRs, integrations, external webhooks, notifications, and generated delivery metrics.
+Laravel API used by the ForTechLead Flutter app. It owns authentication, teams, people, dailies, 1:1, PDI, KPIs, integrations, external webhooks, notifications, and generated delivery metrics.
 
 ## Local Development
 

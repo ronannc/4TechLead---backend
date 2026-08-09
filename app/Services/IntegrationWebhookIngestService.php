@@ -102,12 +102,16 @@ class IntegrationWebhookIngestService
         $ciFailures = (int) $this->number($pullRequest, $payload, 'ci_failures_count');
         $rework = (int) $this->number($pullRequest, $payload, 'rework_count');
         $changedFiles = (int) $this->number($pullRequest, $payload, 'changed_files');
+        $additions = $this->number($pullRequest, $payload, 'additions');
+        $deletions = $this->number($pullRequest, $payload, 'deletions');
         $storyPoints = $this->number($pullRequest, $payload, 'story_points');
+        $createdAt = Arr::get($pullRequest, 'created_at');
+        $mergedAt = Arr::get($pullRequest, 'merged_at', $data['occurred_at'] ?? null);
 
         return [
             'event_type' => $data['event_type'],
             'source_ref' => $data['source_ref'] ?? Arr::get($pullRequest, 'url'),
-            'occurred_at' => $data['occurred_at'] ?? Arr::get($pullRequest, 'merged_at'),
+            'occurred_at' => $data['occurred_at'] ?? $mergedAt,
             'task_refs' => Arr::get($payload, 'task_refs', Arr::get($pullRequest, 'task_refs', [])),
             'quality_score' => $this->qualityScore(
                 reviewComments: $reviewComments,
@@ -120,8 +124,12 @@ class IntegrationWebhookIngestService
             'rework_count' => $rework,
             'story_points' => $storyPoints,
             'changed_files' => $changedFiles,
-            'additions' => $this->number($pullRequest, $payload, 'additions'),
-            'deletions' => $this->number($pullRequest, $payload, 'deletions'),
+            'changed_lines' => $additions + $deletions,
+            'additions' => $additions,
+            'deletions' => $deletions,
+            'review_acceptance_rate' => $rework === 0 ? 100 : 0,
+            'ci_success_rate' => $ciFailures === 0 ? 100 : 0,
+            'pr_merge_time_hours' => $this->hoursBetween($createdAt, $mergedAt),
         ];
     }
 
@@ -141,6 +149,19 @@ class IntegrationWebhookIngestService
         return max(0, min(100, 100 - ($ciFailures * 15) - ($reviewComments * 2) - ($rework * 20)));
     }
 
+    protected function hoursBetween(mixed $start, mixed $end): ?float
+    {
+        if ($start === null || $end === null) {
+            return null;
+        }
+
+        try {
+            return round(Carbon::parse($start)->floatDiffInHours(Carbon::parse($end)), 2);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
     /**
      * @param  array<string, mixed>  $normalizedPayload
      * @param  array<string, mixed>  $data
@@ -157,7 +178,14 @@ class IntegrationWebhookIngestService
             ['ci_failures_count', $normalizedPayload['ci_failures_count'], 'failures'],
             ['rework_count', $normalizedPayload['rework_count'], 'times'],
             ['changed_files_count', $normalizedPayload['changed_files'], 'files'],
+            ['changed_lines_count', $normalizedPayload['changed_lines'], 'lines'],
+            ['review_acceptance_rate', $normalizedPayload['review_acceptance_rate'], 'percent'],
+            ['ci_success_rate', $normalizedPayload['ci_success_rate'], 'percent'],
         ];
+
+        if ($normalizedPayload['pr_merge_time_hours'] !== null) {
+            $metrics[] = ['pr_merge_time_hours', $normalizedPayload['pr_merge_time_hours'], 'hours'];
+        }
 
         if ((float) $normalizedPayload['story_points'] > 0) {
             $metrics[] = ['delivery_points', $normalizedPayload['story_points'], 'points'];
@@ -221,6 +249,10 @@ class IntegrationWebhookIngestService
             ['annual_ci_failure_average', (clone $baseQuery)->where('metric_type', 'ci_failures_count')->avg('metric_value'), 'failures/pr'],
             ['annual_rework_average', (clone $baseQuery)->where('metric_type', 'rework_count')->avg('metric_value'), 'times/pr'],
             ['annual_delivery_points_total', (clone $baseQuery)->where('metric_type', 'delivery_points')->sum('metric_value'), 'points'],
+            ['annual_pr_size_average', (clone $baseQuery)->where('metric_type', 'changed_lines_count')->avg('metric_value'), 'lines/pr'],
+            ['annual_pr_merge_time_average', (clone $baseQuery)->where('metric_type', 'pr_merge_time_hours')->avg('metric_value'), 'hours/pr'],
+            ['annual_review_acceptance_rate', (clone $baseQuery)->where('metric_type', 'review_acceptance_rate')->avg('metric_value'), 'percent'],
+            ['annual_ci_success_rate', (clone $baseQuery)->where('metric_type', 'ci_success_rate')->avg('metric_value'), 'percent'],
         ];
 
         foreach ($statistics as [$type, $value, $unit]) {

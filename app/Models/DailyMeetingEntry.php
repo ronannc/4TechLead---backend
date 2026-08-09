@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\DailyEntryStatus;
-use App\Enums\DailyNoteType;
 use App\Models\Concerns\Filterable;
 use Database\Factories\DailyMeetingEntryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -26,8 +25,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'speaking_order',
     'allotted_seconds',
     'actual_seconds',
-    'note_type',
-    'note',
 ])]
 class DailyMeetingEntry extends Model
 {
@@ -65,16 +62,6 @@ class DailyMeetingEntry extends Model
     }
 
     /**
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'note_type' => DailyNoteType::class,
-        ];
-    }
-
-    /**
      * Derived from actual_seconds vs allotted_seconds — never stored, always computed on read.
      *
      * @return Attribute<DailyEntryStatus, never>
@@ -99,15 +86,7 @@ class DailyMeetingEntry extends Model
      */
     protected function filterableFields(): array
     {
-        return ['team_id', 'person_id', 'daily_meeting_id', 'note_type'];
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    protected function searchableFields(): array
-    {
-        return ['note'];
+        return ['team_id', 'person_id', 'daily_meeting_id'];
     }
 
     /**

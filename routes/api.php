@@ -9,8 +9,6 @@ use App\Http\Controllers\Api\V1\ExternalNotificationController;
 use App\Http\Controllers\Api\V1\ExternalNotificationWebhookController;
 use App\Http\Controllers\Api\V1\IntegrationSystemController;
 use App\Http\Controllers\Api\V1\IntegrationWebhookController;
-use App\Http\Controllers\Api\V1\OkrController;
-use App\Http\Controllers\Api\V1\OkrKeyResultController;
 use App\Http\Controllers\Api\V1\OneOnOneSessionController;
 use App\Http\Controllers\Api\V1\OneOnOneTemplateController;
 use App\Http\Controllers\Api\V1\PersonController;
@@ -52,8 +50,6 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::apiResource('one-on-one-sessions', OneOnOneSessionController::class);
     Route::apiResource('development-plans', DevelopmentPlanController::class);
     Route::apiResource('development-plan-items', DevelopmentPlanItemController::class);
-    Route::apiResource('okrs', OkrController::class);
-    Route::apiResource('okr-key-results', OkrKeyResultController::class);
     // Daily history is append-only: only index/show/store are routed (see DailyMeetingPolicy /
     // DailyMeetingEntryPolicy, which also deny update/delete at the authorization layer).
     Route::apiResource('daily-meetings', DailyMeetingController::class)->only(['index', 'show', 'store']);

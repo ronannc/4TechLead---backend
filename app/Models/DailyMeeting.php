@@ -23,11 +23,11 @@ class DailyMeeting extends Model
 
     /**
      * Always eager-loaded — CrudControllerTrait/GenericIndexService do not eager-load relations
-     * themselves, and every consumer of this resource needs the entries with names.
+     * themselves, and every consumer of this resource needs the entries/annotations with names.
      *
      * @var array<int, string>
      */
-    protected $with = ['entries.person'];
+    protected $with = ['entries.person', 'annotations.person'];
 
     /**
      * @return BelongsTo<Team, $this>
@@ -43,6 +43,14 @@ class DailyMeeting extends Model
     public function entries(): HasMany
     {
         return $this->hasMany(DailyMeetingEntry::class);
+    }
+
+    /**
+     * @return HasMany<DailyMeetingAnnotation, $this>
+     */
+    public function annotations(): HasMany
+    {
+        return $this->hasMany(DailyMeetingAnnotation::class);
     }
 
     /**

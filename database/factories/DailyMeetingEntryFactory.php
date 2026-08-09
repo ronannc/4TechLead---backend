@@ -30,8 +30,6 @@ class DailyMeetingEntryFactory extends Factory
             'speaking_order' => 0,
             'allotted_seconds' => 90,
             'actual_seconds' => fake()->numberBetween(30, 120),
-            'note_type' => null,
-            'note' => null,
         ];
     }
 

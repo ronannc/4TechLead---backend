@@ -26,7 +26,7 @@ final class PersonGrowthSuggestionController extends Controller
             'data' => [
                 'one_on_one_questions' => $this->oneOnOneQuestions($person, $focusArea, $needsAutonomy),
                 'pdi_suggestions' => $this->pdiSuggestions($person, $focusArea, $needsAutonomy),
-                'okr_suggestions' => $this->okrSuggestions($person, $focusArea, $context, $needsAutonomy),
+                'kpi_suggestions' => $this->kpiSuggestions($person, $focusArea, $context, $needsAutonomy),
                 'source' => 'deterministic',
             ],
         ]);
@@ -87,21 +87,21 @@ final class PersonGrowthSuggestionController extends Controller
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function okrSuggestions(Person $person, string $focusArea, ?string $context, bool $needsAutonomy): array
+    private function kpiSuggestions(Person $person, string $focusArea, ?string $context, bool $needsAutonomy): array
     {
         $contextHint = $context ? " considerando {$context}" : '';
 
         return [
             [
-                'objective' => "Aumentar a evolução de {$person->name} em {$focusArea}{$contextHint}",
+                'title' => "Acompanhar evolução de {$person->name} em {$focusArea}{$contextHint}",
                 'focus_area' => $focusArea,
                 'diagnosis' => $needsAutonomy
                     ? 'Há oportunidade de reduzir dependência de direcionamento frequente.'
                     : 'Há oportunidade de ampliar impacto além das próprias entregas.',
-                'key_results' => [
-                    'Registrar 3 evidências objetivas de evolução no ciclo.',
-                    'Reduzir retrabalho identificado em reviews recorrentes.',
-                    'Concluir 80% das ações vinculadas ao PDI.',
+                'metrics' => [
+                    'annual_quality_average',
+                    'annual_rework_average',
+                    'annual_pr_merge_time_average',
                 ],
             ],
         ];

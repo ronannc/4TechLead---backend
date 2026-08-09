@@ -37,7 +37,15 @@ it('publishes a valid OpenAPI document for external integrations', function (): 
         ->and($document['components']['securitySchemes'])
         ->toHaveKey('sanctumBearer')
         ->and($document['components']['schemas']['MetricType']['enum'])
-        ->toContain('annual_quality_average', 'annual_ci_failure_average', 'annual_rework_average');
+        ->toContain(
+            'annual_quality_average',
+            'annual_ci_failure_average',
+            'annual_rework_average',
+            'annual_pr_size_average',
+            'annual_pr_merge_time_average',
+            'annual_review_acceptance_rate',
+            'annual_ci_success_rate',
+        );
 });
 
 it('publishes a browser API reference page', function (): void {

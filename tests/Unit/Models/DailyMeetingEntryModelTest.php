@@ -36,13 +36,10 @@ it('belongs to a meeting, team, and person', function () {
         ->and($entry->person)->not->toBeNull();
 });
 
-it('filters by person_id and note_type via the filter scope', function () {
-    $entry = DailyMeetingEntry::factory()->create(['note_type' => 'impedimento']);
-    DailyMeetingEntry::factory()->create(['note_type' => null]);
+it('filters by person_id via the filter scope', function () {
+    $entry = DailyMeetingEntry::factory()->create();
+    DailyMeetingEntry::factory()->create();
 
     $result = DailyMeetingEntry::query()->filter(['person_id' => $entry->person_id])->get();
-    expect($result)->toHaveCount(1);
-
-    $result = DailyMeetingEntry::query()->filter(['note_type' => 'impedimento'])->get();
     expect($result)->toHaveCount(1);
 });

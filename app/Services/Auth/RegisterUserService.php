@@ -9,8 +9,9 @@ use Throwable;
 class RegisterUserService
 {
     /**
-     * @param array{name: string, email: string, password: string} $attributes
+     * @param  array{name: string, email: string, password: string}  $attributes
      * @return array{user: User, token: string}
+     *
      * @throws Throwable
      */
     public function register(array $attributes): array

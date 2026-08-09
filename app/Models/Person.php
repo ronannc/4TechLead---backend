@@ -53,14 +53,6 @@ class Person extends Model
     }
 
     /**
-     * @return HasMany<Okr, $this>
-     */
-    public function okrs(): HasMany
-    {
-        return $this->hasMany(Okr::class);
-    }
-
-    /**
      * @return HasMany<PersonExternalIdentity, $this>
      */
     public function externalIdentities(): HasMany
