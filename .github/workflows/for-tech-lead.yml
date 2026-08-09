@@ -3,6 +3,27 @@ name: Enviar métricas para 4TechLead
 on:
   pull_request:
     types: [closed]
+  workflow_dispatch:
+    inputs:
+      external_actor_code:
+        description: Identificador da pessoa no 4TechLead
+        required: true
+        type: string
+      title:
+        description: Título para o evento de teste
+        required: false
+        default: Teste manual do GitHub Actions
+        type: string
+      story_points:
+        description: Pontos entregues para o teste
+        required: false
+        default: "0"
+        type: string
+      task_refs:
+        description: Referências separadas por vírgula, exemplo ABC-123,#42
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -13,13 +34,13 @@ permissions:
 jobs:
   send-pr-metrics:
     name: Enviar dados do PR mergeado
-    if: ${{ github.event.pull_request.merged == true }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
 
     env:
-      FOR_TECH_LEAD_API: ${{ vars.FOR_TECH_LEAD_API }}
+      FOR_TECH_LEAD_API: ${{ secrets.FOR_TECH_LEAD_API || vars.FOR_TECH_LEAD_API }}
       FOR_TECH_LEAD_TOKEN: ${{ secrets.FOR_TECH_LEAD_TOKEN }}
-      FOR_TECH_LEAD_ACTOR_MAP: ${{ vars.FOR_TECH_LEAD_ACTOR_MAP }}
+      FOR_TECH_LEAD_ACTOR_MAP: ${{ secrets.FOR_TECH_LEAD_ACTOR_MAP || vars.FOR_TECH_LEAD_ACTOR_MAP }}
       GH_TOKEN: ${{ github.token }}
 
     steps:
@@ -33,9 +54,40 @@ jobs:
           node <<'NODE'
           const fs = require('node:fs');
 
+          async function main() {
           const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
-          const pr = event.pull_request;
           const repo = event.repository.full_name;
+          const isManualRun = process.env.GITHUB_EVENT_NAME === 'workflow_dispatch';
+          const inputs = event.inputs ?? {};
+          const now = new Date().toISOString();
+          const pr = isManualRun
+            ? {
+              number: process.env.GITHUB_RUN_NUMBER,
+              title: inputs.title || 'Teste manual do GitHub Actions',
+              body: '',
+              labels: [],
+              head: {
+                ref: process.env.GITHUB_REF_NAME,
+                sha: process.env.GITHUB_SHA,
+              },
+              base: {
+                ref: process.env.GITHUB_REF_NAME,
+              },
+              user: {
+                login: process.env.GITHUB_ACTOR,
+              },
+              merged_by: {
+                login: process.env.GITHUB_ACTOR,
+              },
+              merged_at: now,
+              html_url: `${event.repository.html_url}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+              review_comments: 0,
+              comments: 0,
+              changed_files: 0,
+              additions: 0,
+              deletions: 0,
+            }
+            : event.pull_request;
           const apiBase = process.env.FOR_TECH_LEAD_API.replace(/\/+$/, '');
           const integrationToken = process.env.FOR_TECH_LEAD_TOKEN;
           const githubToken = process.env.GH_TOKEN;
@@ -59,6 +111,13 @@ jobs:
           }
 
           function taskRefs() {
+            if (isManualRun && inputs.task_refs) {
+              return inputs.task_refs
+                .split(',')
+                .map((ref) => ref.trim())
+                .filter(Boolean);
+            }
+
             const text = [
               pr.title,
               pr.body ?? '',
@@ -71,6 +130,10 @@ jobs:
           }
 
           function storyPoints() {
+            if (isManualRun) {
+              return Number(inputs.story_points || 0);
+            }
+
             for (const label of pr.labels ?? []) {
               const name = label.name ?? '';
               const match = name.match(/\b(?:story\s*)?points?\s*[:/-]?\s*(\d+(?:\.\d+)?)\b/i)
@@ -86,6 +149,10 @@ jobs:
           }
 
           function externalActorCode() {
+            if (isManualRun) {
+              return inputs.external_actor_code;
+            }
+
             if (!process.env.FOR_TECH_LEAD_ACTOR_MAP) {
               return pr.user.login;
             }
@@ -94,11 +161,13 @@ jobs:
             return actorMap[pr.user.login] ?? pr.user.login;
           }
 
-          const [reviews, checks, combinedStatus] = await Promise.all([
-            github(`/repos/${repo}/pulls/${pr.number}/reviews?per_page=100`),
-            github(`/repos/${repo}/commits/${headSha}/check-runs?per_page=100`),
-            github(`/repos/${repo}/commits/${headSha}/status`),
-          ]);
+          const [reviews, checks, combinedStatus] = isManualRun
+            ? [null, null, null]
+            : await Promise.all([
+              github(`/repos/${repo}/pulls/${pr.number}/reviews?per_page=100`),
+              github(`/repos/${repo}/commits/${headSha}/check-runs?per_page=100`),
+              github(`/repos/${repo}/commits/${headSha}/status`),
+            ]);
 
           const reworkCount = Array.isArray(reviews)
             ? reviews.filter((review) => review.state === 'CHANGES_REQUESTED').length
@@ -118,11 +187,13 @@ jobs:
           const ciFailures = failedChecks + failedStatuses;
 
           const payload = {
-            event_id: `github:${repo}:pull_request:${pr.number}:merged`,
-            event_type: 'pull_request_merged',
+            event_id: isManualRun
+              ? `github:${repo}:workflow_dispatch:${process.env.GITHUB_RUN_ID}:${process.env.GITHUB_RUN_ATTEMPT}`
+              : `github:${repo}:pull_request:${pr.number}:merged`,
+            event_type: isManualRun ? 'github_actions_manual_test' : 'pull_request_merged',
             external_actor_code: externalActorCode(),
             occurred_at: pr.merged_at,
-            source_ref: `${repo}#${pr.number}`,
+            source_ref: isManualRun ? `${repo}@${headSha.slice(0, 7)}` : `${repo}#${pr.number}`,
             payload: {
               repository: {
                 id: event.repository.id,
@@ -168,4 +239,10 @@ jobs:
           }
 
           console.log(body);
+          }
+
+          main().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
           NODE
