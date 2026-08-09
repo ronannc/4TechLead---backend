@@ -9,8 +9,9 @@ use Illuminate\Support\Facades\Hash;
 class LoginService
 {
     /**
-     * @param array{email: string, password: string} $credentials
+     * @param  array{email: string, password: string}  $credentials
      * @return array{user: User, token: string}
+     *
      * @throws InvalidCredentialsException
      */
     public function login(array $credentials): array

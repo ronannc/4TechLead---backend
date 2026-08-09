@@ -22,8 +22,6 @@ return new class extends Migration
             $table->unsignedInteger('speaking_order');
             $table->unsignedInteger('allotted_seconds');
             $table->unsignedInteger('actual_seconds');
-            $table->string('note_type')->nullable();
-            $table->text('note')->nullable();
             $table->timestamps();
 
             $table->index(['team_id', 'created_at']);

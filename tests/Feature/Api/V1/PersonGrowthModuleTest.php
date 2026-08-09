@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\DevelopmentPlan;
-use App\Models\Okr;
 use App\Models\Person;
 use App\Models\User;
 
@@ -89,67 +88,7 @@ it('manages development plans and trackable items', function () {
         ->assertJsonPath('data.0.items.0.title', 'Conduzir desenho técnico');
 });
 
-it('manages okrs and measurable key results', function () {
-    $person = Person::factory()->create();
-    $plan = DevelopmentPlan::factory()->create(['person_id' => $person->id]);
-
-    $okrResponse = $this->actingAs(User::factory()->create(), 'sanctum')
-        ->postJson('/api/v1/okrs', [
-            'person_id' => $person->id,
-            'development_plan_id' => $plan->id,
-            'objective' => 'Aumentar autonomia técnica nas entregas críticas',
-            'cycle' => '2026-Q3',
-            'status' => 'active',
-            'focus_area' => 'Autonomia',
-            'diagnosis' => 'Ainda depende de validação frequente.',
-            'evidence_source' => 'PRs, incidentes e decisões registradas.',
-            'baseline' => 'Decisões críticas sempre acompanhadas.',
-            'target' => 'Decisões de médio risco conduzidas com checkpoint.',
-            'confidence' => 70,
-            'progress' => 15,
-        ])
-        ->assertCreated()
-        ->assertJsonPath('data.objective', 'Aumentar autonomia técnica nas entregas críticas');
-
-    $okrId = $okrResponse->json('data.id');
-
-    $keyResultResponse = $this->actingAs(User::factory()->create(), 'sanctum')
-        ->postJson('/api/v1/okr-key-results', [
-            'okr_id' => $okrId,
-            'title' => 'Concluir ações do PDI',
-            'metric_name' => 'Ações concluídas',
-            'data_source' => 'tasks',
-            'initial_value' => 0,
-            'current_value' => 1,
-            'target_value' => 4,
-            'unit' => 'ações',
-            'confidence' => 65,
-            'status' => 'doing',
-            'progress' => 25,
-        ])
-        ->assertCreated()
-        ->assertJsonPath('data.metric_name', 'Ações concluídas')
-        ->assertJsonPath('data.data_source', 'tasks');
-
-    $this->actingAs(User::factory()->create(), 'sanctum')
-        ->putJson("/api/v1/okr-key-results/{$keyResultResponse->json('data.id')}", [
-            'current_value' => 2,
-            'data_source' => 'pull_requests',
-            'progress' => 50,
-        ])
-        ->assertOk()
-        ->assertJsonPath('data.current_value', '2.00')
-        ->assertJsonPath('data.data_source', 'pull_requests')
-        ->assertJsonPath('data.progress', 50);
-
-    $this->actingAs(User::factory()->create(), 'sanctum')
-        ->getJson("/api/v1/okrs?filters[person_id]={$person->id}&search=autonomia")
-        ->assertOk()
-        ->assertJsonCount(1, 'data')
-        ->assertJsonPath('data.0.key_results.0.title', 'Concluir ações do PDI');
-});
-
-it('suggests one on one questions, pdi actions, and okrs for a person', function () {
+it('suggests one on one questions, pdi actions, and kpis for a person', function () {
     $person = Person::factory()->create([
         'name' => 'Linus Torvalds',
         'position' => 'Frontend Engineer',
@@ -161,7 +100,8 @@ it('suggests one on one questions, pdi actions, and okrs for a person', function
         ->assertOk()
         ->assertJsonPath('data.source', 'deterministic')
         ->assertJsonCount(5, 'data.one_on_one_questions')
-        ->assertJsonPath('data.okr_suggestions.0.focus_area', 'acessibilidade');
+        ->assertJsonPath('data.kpi_suggestions.0.focus_area', 'acessibilidade')
+        ->assertJsonPath('data.kpi_suggestions.0.metrics.0', 'annual_quality_average');
 });
 
 it('rejects invalid progress values', function () {
@@ -192,27 +132,6 @@ it('rejects development plan partial updates that would invert the date range', 
 
     $this->actingAs(User::factory()->create(), 'sanctum')
         ->putJson("/api/v1/development-plans/{$plan->id}", [
-            'start_date' => '2026-09-20',
-        ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('end_date');
-});
-
-it('rejects okr partial updates that would invert the date range', function () {
-    $okr = Okr::factory()->create([
-        'start_date' => '2026-08-10',
-        'end_date' => '2026-09-10',
-    ]);
-
-    $this->actingAs(User::factory()->create(), 'sanctum')
-        ->putJson("/api/v1/okrs/{$okr->id}", [
-            'end_date' => '2026-08-01',
-        ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('end_date');
-
-    $this->actingAs(User::factory()->create(), 'sanctum')
-        ->putJson("/api/v1/okrs/{$okr->id}", [
             'start_date' => '2026-09-20',
         ])
         ->assertUnprocessable()

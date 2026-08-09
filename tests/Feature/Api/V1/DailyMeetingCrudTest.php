@@ -1,6 +1,8 @@
 <?php
 
+use App\Enums\DailyAnnotationType;
 use App\Models\DailyMeeting;
+use App\Models\DailyMeetingAnnotation;
 use App\Models\DailyMeetingEntry;
 use App\Models\Person;
 use App\Models\Team;
@@ -29,7 +31,9 @@ it('creates a daily meeting with its entries in one request', function () {
 
     $response->assertJsonPath('data.team_id', $team->id)
         ->assertJsonPath('data.time_limit_seconds', 90)
-        ->assertJsonCount(3, 'data.entries');
+        ->assertJsonCount(3, 'data.entries')
+        ->assertJsonMissingPath('data.entries.0.note_type')
+        ->assertJsonMissingPath('data.entries.0.note');
 
     $meetingId = $response->json('data.id');
     expect(DailyMeeting::query()->find($meetingId))->not->toBeNull();
@@ -46,32 +50,70 @@ it('creates a daily meeting with its entries in one request', function () {
     }
 });
 
-it('saves a categorized note on an entry', function () {
+it('saves daily annotations as topics and blockers', function () {
     $team = Team::factory()->create();
     $person = Person::factory()->create(['team_id' => $team->id]);
 
-    $payload = validDailyMeetingPayload([$person->id]);
-    $payload['entries'][0]['note_type'] = 'impedimento';
-    $payload['entries'][0]['note'] = 'Bloqueado esperando review de PR.';
+    $payload = validDailyMeetingPayload([$person->id], [
+        'annotations' => [
+            [
+                'type' => 'topico',
+                'text' => 'Webhook validado.',
+                'person_id' => $person->id,
+                'resolved' => true,
+            ],
+            [
+                'type' => 'bloqueio',
+                'text' => 'Credencial de staging pendente.',
+                'resolved' => true,
+            ],
+        ],
+    ]);
 
-    $this->actingAs(User::factory()->create(), 'sanctum')
+    $response = $this->actingAs(User::factory()->create(), 'sanctum')
         ->postJson('/api/v1/daily-meetings', $payload)
         ->assertCreated()
-        ->assertJsonPath('data.entries.0.note_type', 'impedimento')
-        ->assertJsonPath('data.entries.0.note', 'Bloqueado esperando review de PR.');
+        ->assertJsonCount(2, 'data.annotations');
+
+    $response->assertJsonFragment([
+        'type' => 'topico',
+        'text' => 'Webhook validado.',
+        'person_id' => $person->id,
+        'resolved' => false,
+    ])->assertJsonFragment([
+        'type' => 'bloqueio',
+        'text' => 'Credencial de staging pendente.',
+        'resolved' => true,
+    ]);
+
+    $this->assertDatabaseHas('daily_meeting_annotations', [
+        'person_id' => $person->id,
+        'type' => 'topico',
+        'text' => 'Webhook validado.',
+        'resolved' => false,
+    ]);
+    $this->assertDatabaseHas('daily_meeting_annotations', [
+        'person_id' => null,
+        'type' => 'bloqueio',
+        'text' => 'Credencial de staging pendente.',
+        'resolved' => true,
+    ]);
 });
 
-it('rejects a note without a note_type', function () {
+it('rejects an annotation without a valid type', function () {
     $team = Team::factory()->create();
     $person = Person::factory()->create(['team_id' => $team->id]);
 
-    $payload = validDailyMeetingPayload([$person->id]);
-    $payload['entries'][0]['note'] = 'Alguma anotação.';
+    $payload = validDailyMeetingPayload([$person->id], [
+        'annotations' => [
+            ['text' => 'Alguma anotação.'],
+        ],
+    ]);
 
     $this->actingAs(User::factory()->create(), 'sanctum')
         ->postJson('/api/v1/daily-meetings', $payload)
         ->assertUnprocessable()
-        ->assertJsonValidationErrors('entries.0.note_type');
+        ->assertJsonValidationErrors('annotations.0.type');
 });
 
 it('creates a daily meeting with people from different teams', function () {
@@ -161,16 +203,29 @@ it('lists daily meetings filtered by team_id', function () {
         ->assertJsonPath('data.0.team_id', $teamA->id);
 });
 
-it('shows a daily meeting with its entries', function () {
+it('shows a daily meeting with its entries and annotations', function () {
     $meeting = DailyMeeting::factory()->create();
     $entry = DailyMeetingEntry::factory()->forMeeting($meeting)->create();
+    $annotation = DailyMeetingAnnotation::factory()->create([
+        'daily_meeting_id' => $meeting->id,
+        'person_id' => $entry->person_id,
+        'type' => DailyAnnotationType::Blocker,
+        'text' => 'Aguardando staging.',
+    ]);
 
     $this->actingAs(User::factory()->create(), 'sanctum')
         ->getJson("/api/v1/daily-meetings/{$meeting->id}")
         ->assertOk()
         ->assertJsonCount(1, 'data.entries')
+        ->assertJsonCount(1, 'data.annotations')
         ->assertJsonPath('data.entries.0.person.id', $entry->person_id)
-        ->assertJsonPath('data.entries.0.person.name', $entry->person->name);
+        ->assertJsonPath('data.entries.0.person.name', $entry->person->name)
+        ->assertJsonMissingPath('data.entries.0.note_type')
+        ->assertJsonMissingPath('data.entries.0.note')
+        ->assertJsonPath('data.annotations.0.person.id', $entry->person_id)
+        ->assertJsonPath('data.annotations.0.person.name', $entry->person->name)
+        ->assertJsonPath('data.annotations.0.type', $annotation->type->value)
+        ->assertJsonPath('data.annotations.0.text', 'Aguardando staging.');
 });
 
 it('does not route update or destroy for daily meetings', function () {

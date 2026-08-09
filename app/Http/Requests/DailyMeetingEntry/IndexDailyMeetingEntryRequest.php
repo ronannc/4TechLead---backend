@@ -2,10 +2,8 @@
 
 namespace App\Http\Requests\DailyMeetingEntry;
 
-use App\Enums\DailyNoteType;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class IndexDailyMeetingEntryRequest extends FormRequest
 {
@@ -32,7 +30,6 @@ class IndexDailyMeetingEntryRequest extends FormRequest
             'filters.team_id' => ['sometimes', 'integer', 'exists:teams,id'],
             'filters.person_id' => ['sometimes', 'integer', 'exists:people,id'],
             'filters.daily_meeting_id' => ['sometimes', 'integer', 'exists:daily_meetings,id'],
-            'filters.note_type' => ['sometimes', Rule::enum(DailyNoteType::class)],
         ];
     }
 }

@@ -130,9 +130,13 @@ it('receives a github pull request webhook and creates delivery metrics for the 
         ->assertJsonPath('data.person_id', $person->id)
         ->assertJsonPath('data.status', 'processed')
         ->assertJsonPath('data.normalized_payload.quality_score', 55)
+        ->assertJsonPath('data.normalized_payload.changed_lines', 500)
+        ->assertJsonPath('data.normalized_payload.review_acceptance_rate', 0)
+        ->assertJsonPath('data.normalized_payload.ci_success_rate', 0)
+        ->assertJsonPath('data.normalized_payload.pr_merge_time_hours', 32)
         ->assertJsonMissingPath('data.normalized_payload.analysis');
 
-    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(13);
+    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(21);
     expect(
         PersonDeliveryMetric::query()
             ->where('person_id', $person->id)
@@ -176,6 +180,30 @@ it('receives a github pull request webhook and creates delivery metrics for the 
             ->where('metric_type', 'annual_rework_average')
             ->value('metric_value'),
     )->toBe('1.00');
+    expect(
+        PersonDeliveryMetric::query()
+            ->where('person_id', $person->id)
+            ->where('metric_type', 'annual_pr_size_average')
+            ->value('metric_value'),
+    )->toBe('500.00');
+    expect(
+        PersonDeliveryMetric::query()
+            ->where('person_id', $person->id)
+            ->where('metric_type', 'annual_pr_merge_time_average')
+            ->value('metric_value'),
+    )->toBe('32.00');
+    expect(
+        PersonDeliveryMetric::query()
+            ->where('person_id', $person->id)
+            ->where('metric_type', 'annual_review_acceptance_rate')
+            ->value('metric_value'),
+    )->toBe('0.00');
+    expect(
+        PersonDeliveryMetric::query()
+            ->where('person_id', $person->id)
+            ->where('metric_type', 'annual_ci_success_rate')
+            ->value('metric_value'),
+    )->toBe('0.00');
 });
 
 it('does not duplicate metrics when the same webhook event is received again', function (): void {
@@ -200,7 +228,7 @@ it('does not duplicate metrics when the same webhook event is received again', f
         'Authorization' => "Bearer {$token}",
     ])->assertOk();
 
-    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(13);
+    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(21);
 });
 
 it('rejects webhooks with an invalid token', function (): void {
@@ -315,6 +343,7 @@ function githubPullRequestPayload(array $overrides = []): array
                 'changed_files' => 12,
                 'additions' => 420,
                 'deletions' => 80,
+                'created_at' => '2026-08-07T10:00:00Z',
                 'merged_at' => '2026-08-08T18:00:00Z',
             ],
         ],

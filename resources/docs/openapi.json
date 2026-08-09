@@ -520,6 +520,7 @@
                                                 "changed_files": 12,
                                                 "additions": 420,
                                                 "deletions": 80,
+                                                "created_at": "2026-08-07T10:00:00Z",
                                                 "merged_at": "2026-08-08T18:00:00Z"
                                             }
                                         }
@@ -584,7 +585,11 @@
                                                         "review_comments_count": 5,
                                                         "ci_failures_count": 1,
                                                         "rework_count": 1,
-                                                        "story_points": 8
+                                                        "story_points": 8,
+                                                        "additions": 420,
+                                                        "deletions": 80,
+                                                        "created_at": "2026-08-07T10:00:00Z",
+                                                        "merged_at": "2026-08-08T18:00:00Z"
                                                     }
                                                 },
                                                 "normalized_payload": {
@@ -602,7 +607,11 @@
                                                     "story_points": 8,
                                                     "changed_files": 12,
                                                     "additions": 420,
-                                                    "deletions": 80
+                                                    "deletions": 80,
+                                                    "changed_lines": 500,
+                                                    "review_acceptance_rate": 0,
+                                                    "ci_success_rate": 0,
+                                                    "pr_merge_time_hours": 32
                                                 },
                                                 "received_at": "2026-08-08T18:00:05.000000Z",
                                                 "created_at": "2026-08-08T18:00:05.000000Z",
@@ -632,7 +641,11 @@
                                                     "story_points": 0,
                                                     "changed_files": 0,
                                                     "additions": 0,
-                                                    "deletions": 0
+                                                    "deletions": 0,
+                                                    "changed_lines": 0,
+                                                    "review_acceptance_rate": 100,
+                                                    "ci_success_rate": 100,
+                                                    "pr_merge_time_hours": null
                                                 },
                                                 "received_at": "2026-08-08T18:10:05.000000Z",
                                                 "created_at": "2026-08-08T18:10:05.000000Z",
@@ -1316,13 +1329,21 @@
                     "ci_failures_count",
                     "rework_count",
                     "changed_files_count",
+                    "changed_lines_count",
+                    "pr_merge_time_hours",
+                    "review_acceptance_rate",
+                    "ci_success_rate",
                     "delivery_points",
                     "annual_pull_request_count",
                     "annual_quality_average",
                     "annual_review_comment_average",
                     "annual_ci_failure_average",
                     "annual_rework_average",
-                    "annual_delivery_points_total"
+                    "annual_delivery_points_total",
+                    "annual_pr_size_average",
+                    "annual_pr_merge_time_average",
+                    "annual_review_acceptance_rate",
+                    "annual_ci_success_rate"
                 ]
             },
             "StoreIntegrationSystemRequest": {
@@ -1751,6 +1772,14 @@
                             "deletions": {
                                 "type": "integer",
                                 "minimum": 0
+                            },
+                            "created_at": {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            "merged_at": {
+                                "type": "string",
+                                "format": "date-time"
                             }
                         }
                     }
@@ -1806,6 +1835,10 @@
                     "deletions": {
                         "type": "integer",
                         "minimum": 0
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
                     },
                     "merged_at": {
                         "type": "string",
@@ -1895,6 +1928,10 @@
                     "changed_files",
                     "additions",
                     "deletions",
+                    "changed_lines",
+                    "review_acceptance_rate",
+                    "ci_success_rate",
+                    "pr_merge_time_hours",
                     "analysis"
                 ],
                 "properties": {
@@ -1949,6 +1986,25 @@
                     },
                     "deletions": {
                         "type": "integer"
+                    },
+                    "changed_lines": {
+                        "type": "integer"
+                    },
+                    "review_acceptance_rate": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                    },
+                    "ci_success_rate": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                    },
+                    "pr_merge_time_hours": {
+                        "type": [
+                            "number",
+                            "null"
+                        ]
                     }
                 }
             },

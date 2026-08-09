@@ -24,6 +24,11 @@ on:
         required: false
         default: ""
         type: string
+      dry_run:
+        description: Montar e exibir o payload sem enviar para a API
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -41,15 +46,18 @@ jobs:
       FOR_TECH_LEAD_API: ${{ secrets.FOR_TECH_LEAD_API || vars.FOR_TECH_LEAD_API }}
       FOR_TECH_LEAD_TOKEN: ${{ secrets.FOR_TECH_LEAD_TOKEN }}
       FOR_TECH_LEAD_ACTOR_MAP: ${{ secrets.FOR_TECH_LEAD_ACTOR_MAP || vars.FOR_TECH_LEAD_ACTOR_MAP }}
+      FOR_TECH_LEAD_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
       GH_TOKEN: ${{ github.token }}
 
     steps:
       - name: Validar configuração
         run: |
-          test -n "$FOR_TECH_LEAD_API"
-          test -n "$FOR_TECH_LEAD_TOKEN"
+          if [ "$FOR_TECH_LEAD_DRY_RUN" != "true" ]; then
+            test -n "$FOR_TECH_LEAD_API"
+            test -n "$FOR_TECH_LEAD_TOKEN"
+          fi
 
-      - name: Analisar PR e enviar webhook
+      - name: Analisar PR e preparar webhook
         run: |
           node <<'NODE'
           const fs = require('node:fs');
@@ -59,6 +67,7 @@ jobs:
           const repo = event.repository.full_name;
           const isManualRun = process.env.GITHUB_EVENT_NAME === 'workflow_dispatch';
           const inputs = event.inputs ?? {};
+          const dryRun = process.env.FOR_TECH_LEAD_DRY_RUN === 'true';
           const now = new Date().toISOString();
           const pr = isManualRun
             ? {
@@ -80,6 +89,7 @@ jobs:
                 login: process.env.GITHUB_ACTOR,
               },
               merged_at: now,
+              created_at: now,
               html_url: `${event.repository.html_url}/actions/runs/${process.env.GITHUB_RUN_ID}`,
               review_comments: 0,
               comments: 0,
@@ -88,8 +98,6 @@ jobs:
               deletions: 0,
             }
             : event.pull_request;
-          const apiBase = process.env.FOR_TECH_LEAD_API.replace(/\/+$/, '');
-          const integrationToken = process.env.FOR_TECH_LEAD_TOKEN;
           const githubToken = process.env.GH_TOKEN;
           const headSha = pr.head.sha;
 
@@ -216,12 +224,21 @@ jobs:
                 changed_files: pr.changed_files ?? 0,
                 additions: pr.additions ?? 0,
                 deletions: pr.deletions ?? 0,
+                created_at: pr.created_at ?? null,
                 merged_at: pr.merged_at,
                 task_refs: taskRefs(),
               },
             },
           };
 
+          if (dryRun) {
+            console.log('Dry run habilitado. Nenhum dado foi enviado para a API do 4TechLead.');
+            console.log(JSON.stringify(payload, null, 2));
+            return;
+          }
+
+          const apiBase = process.env.FOR_TECH_LEAD_API.replace(/\/+$/, '');
+          const integrationToken = process.env.FOR_TECH_LEAD_TOKEN;
           const response = await fetch(`${apiBase}/api/v1/integration-webhooks`, {
             method: 'POST',
             headers: {
