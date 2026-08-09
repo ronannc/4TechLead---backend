@@ -18,6 +18,7 @@ it('publishes a valid OpenAPI document for external integrations', function (): 
             '/auth/me',
             '/auth/logout',
             '/integration-systems',
+            '/integration-systems/{integrationSystem}/regenerate-token',
             '/person-external-identities',
             '/integration-webhooks/{integrationSystem}',
             '/person-delivery-metrics',
@@ -34,7 +35,9 @@ it('publishes a valid OpenAPI document for external integrations', function (): 
             'PersonDeliveryMetric',
         ])
         ->and($document['components']['securitySchemes'])
-        ->toHaveKey('sanctumBearer');
+        ->toHaveKey('sanctumBearer')
+        ->and($document['components']['schemas']['MetricType']['enum'])
+        ->toContain('annual_quality_average', 'annual_ci_failure_average', 'annual_rework_average');
 });
 
 it('publishes a browser API reference page', function (): void {
@@ -61,6 +64,18 @@ it('serves API documentation through friendly Laravel routes', function (): void
         ->assertJsonPath('openapi', '3.1.0')
         ->assertJsonPath('info.title', '4TechLead Integrations API')
         ->assertJsonPath('paths./auth/login.post.summary', 'Log in and receive an API token')
+        ->assertJsonPath(
+            'paths./integration-systems/{integrationSystem}/regenerate-token.post.summary',
+            'Regenerate the webhook token for an integration system',
+        )
+        ->assertJsonPath(
+            'paths./person-external-identities.post.summary',
+            'Generate an external actor code for a person',
+        )
+        ->assertJsonMissingPath('components.schemas.StorePersonExternalIdentityRequest.properties.external_code')
+        ->assertJsonMissingPath('components.schemas.PersonExternalIdentity.properties.external_username')
+        ->assertJsonMissingPath('components.schemas.DeliveryAnalysis')
+        ->assertJsonMissingPath('components.schemas.NormalizedWebhookPayload.properties.analysis')
         ->assertJsonPath('components.schemas.AuthTokenResponse.required.1', 'token');
 
     expect($response->headers->get('content-type'))->toContain('application/json');
