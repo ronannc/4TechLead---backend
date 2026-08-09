@@ -10,6 +10,9 @@ use App\Http\Requests\IntegrationSystem\UpdateIntegrationSystemRequest;
 use App\Http\Resources\IntegrationSystemResource;
 use App\Models\IntegrationSystem;
 use App\Services\IntegrationSystemStoreService;
+use App\Services\IntegrationSystemTokenService;
+use Illuminate\Http\JsonResponse;
+use Throwable;
 
 final class IntegrationSystemController extends Controller
 {
@@ -23,5 +26,19 @@ final class IntegrationSystemController extends Controller
         $this->updateRequest = UpdateIntegrationSystemRequest::class;
         $this->indexRequest = IndexIntegrationSystemRequest::class;
         $this->storeService = $storeService;
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function regenerateToken(
+        IntegrationSystem $integrationSystem,
+        IntegrationSystemTokenService $tokenService,
+    ): JsonResponse {
+        $this->authorize('update', $integrationSystem);
+
+        $integrationSystem = $tokenService->regenerate($integrationSystem);
+
+        return (new IntegrationSystemResource($integrationSystem))->response();
     }
 }

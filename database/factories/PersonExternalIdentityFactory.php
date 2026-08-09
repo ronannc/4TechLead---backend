@@ -23,7 +23,6 @@ class PersonExternalIdentityFactory extends Factory
             'person_id' => Person::factory(),
             'integration_system_id' => IntegrationSystem::factory(),
             'external_code' => fake()->userName(),
-            'external_username' => fake()->userName(),
             'metadata' => ['source' => 'factory'],
             'active' => true,
         ];

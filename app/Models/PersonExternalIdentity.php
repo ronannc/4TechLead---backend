@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'person_id',
     'integration_system_id',
     'external_code',
-    'external_username',
     'metadata',
     'active',
 ])]
@@ -62,7 +61,7 @@ class PersonExternalIdentity extends Model
      */
     protected function searchableFields(): array
     {
-        return ['external_code', 'external_username'];
+        return ['external_code'];
     }
 
     /**

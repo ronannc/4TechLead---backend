@@ -19,7 +19,6 @@ class PersonExternalIdentityResource extends JsonResource
             'person_id' => $this->person_id,
             'integration_system_id' => $this->integration_system_id,
             'external_code' => $this->external_code,
-            'external_username' => $this->external_username,
             'metadata' => $this->metadata,
             'active' => $this->active,
             'created_at' => $this->created_at,

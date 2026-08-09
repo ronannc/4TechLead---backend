@@ -34,6 +34,10 @@ Route::post('integration-webhooks/{integrationSystem}', IntegrationWebhookContro
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::apiResource('teams', TeamController::class);
     Route::apiResource('people', PersonController::class);
+    Route::post(
+        'integration-systems/{integrationSystem}/regenerate-token',
+        [IntegrationSystemController::class, 'regenerateToken']
+    );
     Route::apiResource('integration-systems', IntegrationSystemController::class);
     Route::apiResource('person-external-identities', PersonExternalIdentityController::class);
     Route::apiResource('person-delivery-metrics', PersonDeliveryMetricController::class)->only(['index', 'show']);

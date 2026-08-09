@@ -24,16 +24,14 @@ class StorePersonExternalIdentityRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'person_id' => ['required', 'integer', 'exists:people,id'],
-            'integration_system_id' => ['required', 'integer', 'exists:integration_systems,id'],
-            'external_code' => [
+            'person_id' => [
                 'required',
-                'string',
-                'max:255',
-                Rule::unique('person_external_identities', 'external_code')
+                'integer',
+                'exists:people,id',
+                Rule::unique('person_external_identities', 'person_id')
                     ->where('integration_system_id', $this->integer('integration_system_id')),
             ],
-            'external_username' => ['nullable', 'string', 'max:255'],
+            'integration_system_id' => ['required', 'integer', 'exists:integration_systems,id'],
             'metadata' => ['nullable', 'array'],
             'active' => ['sometimes', 'boolean'],
         ];

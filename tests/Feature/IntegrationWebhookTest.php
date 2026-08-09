@@ -32,6 +32,42 @@ it('creates an integration system with a one time webhook token', function (): v
     expect($integration->token_hash)->not->toBe($token);
 });
 
+it('regenerates an integration webhook token and invalidates the old token', function (): void {
+    Sanctum::actingAs(User::factory()->create());
+
+    $oldToken = 'old-github-secret-token';
+    $integration = IntegrationSystem::factory()->create([
+        'token_hash' => hash('sha256', $oldToken),
+        'token_prefix' => substr($oldToken, 0, 8),
+    ]);
+
+    $response = $this->postJson("/api/v1/integration-systems/{$integration->id}/regenerate-token")
+        ->assertOk()
+        ->assertJsonPath('data.id', $integration->id)
+        ->assertJsonStructure(['data' => ['token_prefix', 'webhook_token']]);
+
+    $newToken = $response->json('data.webhook_token');
+
+    expect($newToken)
+        ->toBeString()
+        ->not->toBe('')
+        ->not->toBe($oldToken);
+
+    $integration->refresh();
+
+    expect($integration->token_hash)->toBe(hash('sha256', $newToken));
+    expect($integration->token_prefix)->toBe(substr($newToken, 0, 8));
+
+    $this->postJson("/api/v1/integration-webhooks/{$integration->id}", githubPullRequestPayload(), [
+        'Authorization' => "Bearer {$oldToken}",
+    ])->assertUnauthorized();
+
+    $this->postJson("/api/v1/integration-webhooks/{$integration->id}", githubPullRequestPayload(), [
+        'Authorization' => "Bearer {$newToken}",
+    ])->assertOk()
+        ->assertJsonPath('data.status', 'unmapped_person');
+});
+
 it('maps an external identity to a person', function (): void {
     Sanctum::actingAs(User::factory()->create());
 
@@ -41,28 +77,33 @@ it('maps an external identity to a person', function (): void {
     $this->postJson('/api/v1/person-external-identities', [
         'person_id' => $person->id,
         'integration_system_id' => $integration->id,
-        'external_code' => 'lucas-github',
-        'external_username' => 'Lucas Farias',
     ])->assertCreated()
         ->assertJsonPath('data.person_id', $person->id)
-        ->assertJsonPath('data.external_code', 'lucas-github');
+        ->assertJsonPath('data.integration_system_id', $integration->id)
+        ->assertJsonMissingPath('data.external_username');
+
+    $identity = PersonExternalIdentity::query()->firstOrFail();
+
+    expect($identity->external_code)
+        ->toStartWith('ext_')
+        ->toHaveLength(24);
 });
 
-it('rejects duplicate external identity codes for the same integration system', function (): void {
+it('rejects duplicate person mappings for the same integration system', function (): void {
     Sanctum::actingAs(User::factory()->create());
 
     $integration = IntegrationSystem::factory()->create();
+    $person = Person::factory()->create();
     PersonExternalIdentity::factory()->create([
+        'person_id' => $person->id,
         'integration_system_id' => $integration->id,
-        'external_code' => 'lucas-github',
     ]);
 
     $this->postJson('/api/v1/person-external-identities', [
-        'person_id' => Person::factory()->create()->id,
+        'person_id' => $person->id,
         'integration_system_id' => $integration->id,
-        'external_code' => 'lucas-github',
     ])->assertUnprocessable()
-        ->assertJsonValidationErrors('external_code');
+        ->assertJsonValidationErrors('person_id');
 });
 
 it('receives a github pull request webhook and creates delivery metrics for the mapped person', function (): void {
@@ -88,9 +129,10 @@ it('receives a github pull request webhook and creates delivery metrics for the 
     )->assertOk()
         ->assertJsonPath('data.person_id', $person->id)
         ->assertJsonPath('data.status', 'processed')
-        ->assertJsonPath('data.normalized_payload.quality_score', 55);
+        ->assertJsonPath('data.normalized_payload.quality_score', 55)
+        ->assertJsonMissingPath('data.normalized_payload.analysis');
 
-    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(7);
+    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(13);
     expect(
         PersonDeliveryMetric::query()
             ->where('person_id', $person->id)
@@ -100,9 +142,40 @@ it('receives a github pull request webhook and creates delivery metrics for the 
     expect(
         PersonDeliveryMetric::query()
             ->where('person_id', $person->id)
+            ->where('metric_type', 'code_quality_score')
+            ->firstOrFail()
+            ->metadata,
+    )->not->toHaveKey('analysis');
+    expect(
+        PersonDeliveryMetric::query()
+            ->where('person_id', $person->id)
             ->where('metric_type', 'delivery_points')
             ->value('metric_value'),
     )->toBe('8.00');
+    expect(
+        PersonDeliveryMetric::query()
+            ->where('person_id', $person->id)
+            ->where('metric_type', 'delivery_analysis')
+            ->exists(),
+    )->toBeFalse();
+    expect(
+        PersonDeliveryMetric::query()
+            ->where('person_id', $person->id)
+            ->where('metric_type', 'annual_ci_failure_average')
+            ->value('metric_value'),
+    )->toBe('1.00');
+    expect(
+        PersonDeliveryMetric::query()
+            ->where('person_id', $person->id)
+            ->where('metric_type', 'annual_review_comment_average')
+            ->value('metric_value'),
+    )->toBe('5.00');
+    expect(
+        PersonDeliveryMetric::query()
+            ->where('person_id', $person->id)
+            ->where('metric_type', 'annual_rework_average')
+            ->value('metric_value'),
+    )->toBe('1.00');
 });
 
 it('does not duplicate metrics when the same webhook event is received again', function (): void {
@@ -127,7 +200,7 @@ it('does not duplicate metrics when the same webhook event is received again', f
         'Authorization' => "Bearer {$token}",
     ])->assertOk();
 
-    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(7);
+    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(13);
 });
 
 it('rejects webhooks with an invalid token', function (): void {
