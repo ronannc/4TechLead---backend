@@ -1788,6 +1788,20 @@
             "PullRequestPayload": {
                 "type": "object",
                 "additionalProperties": true,
+                "required": [
+                    "number",
+                    "title",
+                    "review_comments_count",
+                    "comments_count",
+                    "ci_failures_count",
+                    "rework_count",
+                    "story_points",
+                    "changed_files",
+                    "additions",
+                    "deletions",
+                    "created_at",
+                    "merged_at"
+                ],
                 "properties": {
                     "number": {
                         "type": "integer"
@@ -1931,8 +1945,7 @@
                     "changed_lines",
                     "review_acceptance_rate",
                     "ci_success_rate",
-                    "pr_merge_time_hours",
-                    "analysis"
+                    "pr_merge_time_hours"
                 ],
                 "properties": {
                     "event_type": {

@@ -14,6 +14,11 @@ on:
         required: false
         default: Teste manual do GitHub Actions
         type: string
+      created_at:
+        description: Data/hora de criação fictícia do PR para teste manual
+        required: false
+        default: ""
+        type: string
       story_points:
         description: Pontos entregues para o teste
         required: false
@@ -44,6 +49,7 @@ jobs:
       manual_run: ${{ github.event_name == 'workflow_dispatch' }}
       external_actor_code: ${{ github.event.inputs.external_actor_code || '' }}
       title: ${{ github.event.inputs.title || 'Teste manual do GitHub Actions' }}
+      created_at: ${{ github.event.inputs.created_at || '' }}
       story_points: ${{ github.event.inputs.story_points || '0' }}
       task_refs: ${{ github.event.inputs.task_refs || '' }}
       dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}

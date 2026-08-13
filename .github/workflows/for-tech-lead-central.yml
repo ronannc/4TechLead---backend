@@ -15,6 +15,10 @@ on:
         required: false
         type: string
         default: Teste manual do GitHub Actions
+      created_at:
+        required: false
+        type: string
+        default: ''
       story_points:
         required: false
         type: string
@@ -57,6 +61,7 @@ jobs:
       FOR_TECH_LEAD_MANUAL_RUN: ${{ inputs.manual_run }}
       FOR_TECH_LEAD_EXTERNAL_ACTOR_CODE: ${{ inputs.external_actor_code }}
       FOR_TECH_LEAD_TITLE: ${{ inputs.title }}
+      FOR_TECH_LEAD_CREATED_AT: ${{ inputs.created_at }}
       FOR_TECH_LEAD_STORY_POINTS: ${{ inputs.story_points }}
       FOR_TECH_LEAD_TASK_REFS: ${{ inputs.task_refs }}
       GH_TOKEN: ${{ github.token }}
@@ -80,6 +85,7 @@ jobs:
             const isManualRun = process.env.FOR_TECH_LEAD_MANUAL_RUN === 'true';
             const dryRun = process.env.FOR_TECH_LEAD_DRY_RUN === 'true';
             const now = new Date().toISOString();
+            const manualCreatedAt = process.env.FOR_TECH_LEAD_CREATED_AT || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
             const pr = isManualRun
               ? {
                 number: process.env.GITHUB_RUN_NUMBER,
@@ -100,7 +106,7 @@ jobs:
                   login: process.env.GITHUB_ACTOR,
                 },
                 merged_at: now,
-                created_at: now,
+                created_at: manualCreatedAt,
                 html_url: `${event.repository.html_url}/actions/runs/${process.env.GITHUB_RUN_ID}`,
                 review_comments: 0,
                 comments: 0,
@@ -200,8 +206,8 @@ jobs:
                 'timed_out',
               ].includes(check.conclusion)).length
               : 0;
-            const failedStatuses = Array.isArray(combinedStatus?.statuses)
-              ? combinedStatus.statuses.filter((status) => ['error', 'failure'].includes(status.state)).length
+            const failedStatuses = Array.isArray(combinedStatus?.contexts)
+              ? combinedStatus.contexts.filter((status) => ['error', 'failure'].includes(status.state)).length
               : 0;
             const ciFailures = failedChecks + failedStatuses;
 
@@ -209,7 +215,7 @@ jobs:
               event_id: isManualRun
                 ? `github:${repo}:workflow_dispatch:${process.env.GITHUB_RUN_ID}:${process.env.GITHUB_RUN_ATTEMPT}`
                 : `github:${repo}:pull_request:${pr.number}:merged`,
-              event_type: isManualRun ? 'github_actions_manual_test' : 'pull_request_merged',
+              event_type: 'pull_request_merged',
               external_actor_code: externalActorCode(),
               occurred_at: pr.merged_at,
               source_ref: isManualRun ? `${repo}@${headSha.slice(0, 7)}` : `${repo}#${pr.number}`,

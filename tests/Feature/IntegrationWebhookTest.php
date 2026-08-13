@@ -242,6 +242,22 @@ it('rejects webhooks with an invalid token', function (): void {
     ])->assertUnauthorized();
 });
 
+it('rejects merged pull request webhooks missing required pull request metrics', function (): void {
+    $token = 'github-secret-token';
+    IntegrationSystem::factory()->create([
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+
+    $payload = githubPullRequestPayload();
+    unset($payload['payload']['pull_request']['created_at']);
+
+    $this->postJson('/api/v1/integration-webhooks', $payload, [
+        'Authorization' => "Bearer {$token}",
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors('payload.pull_request.created_at');
+});
+
 it('rejects webhooks for inactive integrations', function (): void {
     $token = 'github-secret-token';
     $integration = IntegrationSystem::factory()->create([
