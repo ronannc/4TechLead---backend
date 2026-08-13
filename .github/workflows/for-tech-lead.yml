@@ -56,4 +56,3 @@ jobs:
       actor_map: ${{ vars.FOR_TECH_LEAD_ACTOR_MAP }}
     secrets:
       FOR_TECH_LEAD_TOKEN: ${{ secrets.FOR_TECH_LEAD_TOKEN }}
-      FOR_TECH_LEAD_ACTOR_MAP: ${{ secrets.FOR_TECH_LEAD_ACTOR_MAP }}

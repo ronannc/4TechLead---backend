@@ -38,8 +38,6 @@ on:
     secrets:
       FOR_TECH_LEAD_TOKEN:
         required: false
-      FOR_TECH_LEAD_ACTOR_MAP:
-        required: false
 
 permissions:
   contents: read
@@ -56,7 +54,7 @@ jobs:
     env:
       FOR_TECH_LEAD_API: ${{ vars.FOR_TECH_LEAD_API }}
       FOR_TECH_LEAD_TOKEN: ${{ secrets.FOR_TECH_LEAD_TOKEN }}
-      FOR_TECH_LEAD_ACTOR_MAP: ${{ secrets.FOR_TECH_LEAD_ACTOR_MAP || inputs.actor_map }}
+      FOR_TECH_LEAD_ACTOR_MAP: ${{ inputs.actor_map }}
       FOR_TECH_LEAD_DRY_RUN: ${{ inputs.manual_run && inputs.dry_run }}
       FOR_TECH_LEAD_MANUAL_RUN: ${{ inputs.manual_run }}
       FOR_TECH_LEAD_EXTERNAL_ACTOR_CODE: ${{ inputs.external_actor_code }}
