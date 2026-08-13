@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      FOR_TECH_LEAD_API: ${{ vars.FOR_TECH_LEAD_API }}
+      FOR_TECH_LEAD_API: https://4techlead-backend-production-btqndx.laravel.cloud/
       FOR_TECH_LEAD_TOKEN: ${{ secrets.FOR_TECH_LEAD_TOKEN }}
       FOR_TECH_LEAD_ACTOR_MAP: ${{ inputs.actor_map }}
       FOR_TECH_LEAD_DRY_RUN: ${{ inputs.manual_run && inputs.dry_run }}
