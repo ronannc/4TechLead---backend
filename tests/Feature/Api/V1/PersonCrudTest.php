@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\DailyMeetingEntry;
 use App\Models\Person;
 use App\Models\Team;
 use App\Models\User;
@@ -60,13 +61,30 @@ it('orders people by multiple columns', function () {
 
 it('shows a person with age computed from birth_date', function () {
     $person = Person::factory()->create(['name' => 'Ada Lovelace', 'birth_date' => '1990-05-10']);
+    DailyMeetingEntry::factory()->create([
+        'person_id' => $person->id,
+        'team_id' => $person->team_id,
+        'allotted_seconds' => 100,
+        'actual_seconds' => 100,
+    ]);
+    DailyMeetingEntry::factory()->create([
+        'person_id' => $person->id,
+        'team_id' => $person->team_id,
+        'allotted_seconds' => 100,
+        'actual_seconds' => 120,
+    ]);
 
     $this->actingAs(User::factory()->create(), 'sanctum')
         ->getJson("/api/v1/people/{$person->id}")
         ->assertOk()
         ->assertJsonPath('data.id', $person->id)
         ->assertJsonPath('data.name', 'Ada Lovelace')
-        ->assertJsonPath('data.age', Carbon::parse('1990-05-10')->age);
+        ->assertJsonPath('data.age', Carbon::parse('1990-05-10')->age)
+        ->assertJsonPath('data.daily_stats_summary.entry_count', 2)
+        ->assertJsonPath('data.daily_stats_summary.average_actual_seconds', 110)
+        ->assertJsonPath('data.daily_stats_summary.on_time_percentage', 50)
+        ->assertJsonPath('data.daily_stats_summary.burned_percentage', 50)
+        ->assertJsonPath('data.daily_stats_summary.spoke_too_little_percentage', 0);
 });
 
 it('returns 404 for a non-existent person', function () {

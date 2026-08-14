@@ -27,6 +27,10 @@ class PersonResource extends JsonResource
             'phone' => $this->phone,
             'admission_date' => $this->admission_date?->toDateString(),
             'seniority' => $this->seniority,
+            'daily_stats_summary' => $this->when(
+                $this->resource->getAttribute('daily_stats_summary') !== null,
+                fn (): mixed => $this->resource->getAttribute('daily_stats_summary'),
+            ),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

@@ -9,6 +9,8 @@ use App\Http\Requests\Person\StorePersonRequest;
 use App\Http\Requests\Person\UpdatePersonRequest;
 use App\Http\Resources\PersonResource;
 use App\Models\Person;
+use App\Services\PersonDailyStatsSummaryService;
+use Illuminate\Http\JsonResponse;
 
 final class PersonController extends Controller
 {
@@ -21,5 +23,21 @@ final class PersonController extends Controller
         $this->storeRequest = StorePersonRequest::class;
         $this->updateRequest = UpdatePersonRequest::class;
         $this->indexRequest = IndexPersonRequest::class;
+    }
+
+    public function show(
+        int|string $id,
+        PersonDailyStatsSummaryService $dailyStatsSummaryService,
+    ): JsonResponse {
+        $model = $this->findModel($id);
+
+        $this->authorize('view', $model);
+
+        $model->setAttribute(
+            'daily_stats_summary',
+            $dailyStatsSummaryService->summarize((int) $model->getKey()),
+        );
+
+        return (new PersonResource($model))->response();
     }
 }
