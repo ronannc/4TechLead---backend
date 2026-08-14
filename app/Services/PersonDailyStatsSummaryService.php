@@ -11,14 +11,15 @@ class PersonDailyStatsSummaryService
      */
     public function summarize(int $personId): array
     {
+        $spokeTooLittleRatio = number_format(DailyMeetingEntry::SPOKE_TOO_LITTLE_RATIO, 2, '.', '');
+
         $summary = DailyMeetingEntry::query()
             ->where('person_id', $personId)
             ->selectRaw('COUNT(*) as entry_count')
             ->selectRaw('COALESCE(AVG(actual_seconds), 0) as average_actual_seconds')
             ->selectRaw('SUM(CASE WHEN actual_seconds > allotted_seconds THEN 1 ELSE 0 END) as burned_count')
             ->selectRaw(
-                'SUM(CASE WHEN actual_seconds < allotted_seconds * ? THEN 1 ELSE 0 END) as spoke_too_little_count',
-                [DailyMeetingEntry::SPOKE_TOO_LITTLE_RATIO],
+                "SUM(CASE WHEN actual_seconds < allotted_seconds * {$spokeTooLittleRatio} THEN 1 ELSE 0 END) as spoke_too_little_count",
             )
             ->first();
 

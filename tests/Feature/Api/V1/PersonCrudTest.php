@@ -65,6 +65,12 @@ it('shows a person with age computed from birth_date', function () {
         'person_id' => $person->id,
         'team_id' => $person->team_id,
         'allotted_seconds' => 100,
+        'actual_seconds' => 10,
+    ]);
+    DailyMeetingEntry::factory()->create([
+        'person_id' => $person->id,
+        'team_id' => $person->team_id,
+        'allotted_seconds' => 100,
         'actual_seconds' => 100,
     ]);
     DailyMeetingEntry::factory()->create([
@@ -80,11 +86,11 @@ it('shows a person with age computed from birth_date', function () {
         ->assertJsonPath('data.id', $person->id)
         ->assertJsonPath('data.name', 'Ada Lovelace')
         ->assertJsonPath('data.age', Carbon::parse('1990-05-10')->age)
-        ->assertJsonPath('data.daily_stats_summary.entry_count', 2)
-        ->assertJsonPath('data.daily_stats_summary.average_actual_seconds', 110)
-        ->assertJsonPath('data.daily_stats_summary.on_time_percentage', 50)
-        ->assertJsonPath('data.daily_stats_summary.burned_percentage', 50)
-        ->assertJsonPath('data.daily_stats_summary.spoke_too_little_percentage', 0);
+        ->assertJsonPath('data.daily_stats_summary.entry_count', 3)
+        ->assertJsonPath('data.daily_stats_summary.average_actual_seconds', 76.67)
+        ->assertJsonPath('data.daily_stats_summary.on_time_percentage', 33.33)
+        ->assertJsonPath('data.daily_stats_summary.burned_percentage', 33.33)
+        ->assertJsonPath('data.daily_stats_summary.spoke_too_little_percentage', 33.33);
 });
 
 it('returns 404 for a non-existent person', function () {
