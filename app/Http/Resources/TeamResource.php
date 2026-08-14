@@ -17,6 +17,14 @@ class TeamResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'people' => $this->when(
+                $this->resource->getAttribute('people') !== null,
+                fn (): mixed => $this->resource->getAttribute('people'),
+            ),
+            'people_meta' => $this->when(
+                $this->resource->getAttribute('people_meta') !== null,
+                fn (): mixed => $this->resource->getAttribute('people_meta'),
+            ),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

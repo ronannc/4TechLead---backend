@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Person;
 use App\Models\Team;
 use App\Models\User;
 
@@ -40,12 +41,19 @@ it('orders teams by multiple columns', function () {
 
 it('shows a team', function () {
     $team = Team::factory()->create(['name' => 'Engineering']);
+    Person::factory()->create(['team_id' => $team->id, 'name' => 'Ada Lovelace']);
+    Person::factory()->create(['team_id' => $team->id, 'name' => 'Grace Hopper']);
 
     $this->actingAs(User::factory()->create(), 'sanctum')
-        ->getJson("/api/v1/teams/{$team->id}")
+        ->getJson("/api/v1/teams/{$team->id}?people_page=1&people_per_page=1&people_search=Ada")
         ->assertOk()
         ->assertJsonPath('data.id', $team->id)
-        ->assertJsonPath('data.name', 'Engineering');
+        ->assertJsonPath('data.name', 'Engineering')
+        ->assertJsonPath('data.people.0.name', 'Ada Lovelace')
+        ->assertJsonPath('data.people_meta.current_page', 1)
+        ->assertJsonPath('data.people_meta.last_page', 1)
+        ->assertJsonPath('data.people_meta.per_page', 1)
+        ->assertJsonPath('data.people_meta.total', 1);
 });
 
 it('returns 404 for a non-existent team', function () {
