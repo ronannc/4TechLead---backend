@@ -131,8 +131,12 @@ it('receives a github pull request webhook and creates delivery metrics for the 
         ->assertJsonPath('data.status', 'processed')
         ->assertJsonPath('data.normalized_payload.quality_score', 55)
         ->assertJsonPath('data.normalized_payload.changed_lines', 500)
+        ->assertJsonPath('data.normalized_payload.review_count', 3)
+        ->assertJsonPath('data.normalized_payload.head_ref', 'feature/payments')
+        ->assertJsonPath('data.normalized_payload.base_ref', 'main')
         ->assertJsonPath('data.normalized_payload.review_acceptance_rate', 0)
         ->assertJsonPath('data.normalized_payload.ci_success_rate', 0)
+        ->assertJsonPath('data.normalized_payload.pr_open_time_hours', 32)
         ->assertJsonPath('data.normalized_payload.pr_merge_time_hours', 32)
         ->assertJsonMissingPath('data.normalized_payload.analysis');
 
@@ -229,6 +233,43 @@ it('does not duplicate metrics when the same webhook event is received again', f
     ])->assertOk();
 
     expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(21);
+});
+
+it('accepts a closed pull request without merge and stores the richer payload without delivery metrics', function (): void {
+    $token = 'github-secret-token';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'github',
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+    $person = Person::factory()->create();
+    PersonExternalIdentity::factory()->create([
+        'person_id' => $person->id,
+        'integration_system_id' => $integration->id,
+        'external_code' => 'lucas-github',
+    ]);
+
+    $payload = githubPullRequestPayload([
+        'event_id' => 'github-pr-42-closed',
+        'event_type' => 'pull_request_closed',
+        'occurred_at' => '2026-08-08T18:00:00Z',
+        'payload' => [
+            'pull_request' => [
+                'closed_at' => '2026-08-08T18:00:00Z',
+                'merged_at' => null,
+            ],
+        ],
+    ]);
+
+    $this->postJson('/api/v1/integration-webhooks', $payload, [
+        'Authorization' => "Bearer {$token}",
+    ])->assertOk()
+        ->assertJsonPath('data.status', 'processed')
+        ->assertJsonPath('data.normalized_payload.closed_without_merge', true)
+        ->assertJsonPath('data.normalized_payload.pr_open_time_hours', 32)
+        ->assertJsonPath('data.normalized_payload.pr_merge_time_hours', null);
+
+    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(0);
 });
 
 it('rejects webhooks with an invalid token', function (): void {
@@ -351,8 +392,16 @@ function githubPullRequestPayload(array $overrides = []): array
             'pull_request' => [
                 'number' => 42,
                 'title' => 'ABC-123 entregar fluxo de pagamentos',
+                'author' => 'lucas-github',
+                'merged_by' => 'ronannc',
+                'head_ref' => 'feature/payments',
+                'base_ref' => 'main',
                 'review_comments_count' => 5,
                 'comments_count' => 8,
+                'review_count' => 3,
+                'unique_reviewer_count' => 2,
+                'approvals_count' => 1,
+                'changes_requested_count' => 1,
                 'ci_failures_count' => 1,
                 'rework_count' => 1,
                 'story_points' => 8,
@@ -360,6 +409,7 @@ function githubPullRequestPayload(array $overrides = []): array
                 'additions' => 420,
                 'deletions' => 80,
                 'created_at' => '2026-08-07T10:00:00Z',
+                'closed_at' => '2026-08-08T18:00:00Z',
                 'merged_at' => '2026-08-08T18:00:00Z',
             ],
         ],

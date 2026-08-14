@@ -69,7 +69,7 @@ class IntegrationWebhookIngestService
 
             $integrationSystem->forceFill(['last_received_at' => now()])->save();
 
-            if ($identity !== null) {
+            if ($identity !== null && $event->event_type !== 'pull_request_closed') {
                 $this->createMetrics($event, $normalizedPayload, $data);
                 $this->recalculatePersonStatistics($event);
             }
@@ -97,8 +97,13 @@ class IntegrationWebhookIngestService
     {
         $payload = $data['payload'];
         $pullRequest = (array) Arr::get($payload, 'pull_request', []);
+        $eventType = (string) $data['event_type'];
         $reviewComments = (int) $this->number($pullRequest, $payload, 'review_comments_count');
         $comments = (int) $this->number($pullRequest, $payload, 'comments_count');
+        $reviewCount = (int) $this->number($pullRequest, $payload, 'review_count');
+        $uniqueReviewerCount = (int) $this->number($pullRequest, $payload, 'unique_reviewer_count');
+        $approvalsCount = (int) $this->number($pullRequest, $payload, 'approvals_count');
+        $changesRequestedCount = (int) $this->number($pullRequest, $payload, 'changes_requested_count');
         $ciFailures = (int) $this->number($pullRequest, $payload, 'ci_failures_count');
         $rework = (int) $this->number($pullRequest, $payload, 'rework_count');
         $changedFiles = (int) $this->number($pullRequest, $payload, 'changed_files');
@@ -106,20 +111,34 @@ class IntegrationWebhookIngestService
         $deletions = $this->number($pullRequest, $payload, 'deletions');
         $storyPoints = $this->number($pullRequest, $payload, 'story_points');
         $createdAt = Arr::get($pullRequest, 'created_at');
-        $mergedAt = Arr::get($pullRequest, 'merged_at', $data['occurred_at'] ?? null);
+        $closedAt = Arr::get($pullRequest, 'closed_at', $data['occurred_at'] ?? null);
+        $mergedAt = Arr::get($pullRequest, 'merged_at');
+        $completedAt = $mergedAt ?? $closedAt ?? $data['occurred_at'] ?? null;
+        $isMerged = $eventType === 'pull_request_merged';
 
         return [
-            'event_type' => $data['event_type'],
+            'event_type' => $eventType,
             'source_ref' => $data['source_ref'] ?? Arr::get($pullRequest, 'url'),
-            'occurred_at' => $data['occurred_at'] ?? $mergedAt,
+            'occurred_at' => $data['occurred_at'] ?? $completedAt,
             'task_refs' => Arr::get($payload, 'task_refs', Arr::get($pullRequest, 'task_refs', [])),
             'quality_score' => $this->qualityScore(
                 reviewComments: $reviewComments,
                 ciFailures: $ciFailures,
                 rework: $rework,
             ),
+            'author' => Arr::get($pullRequest, 'author'),
+            'merged_by' => Arr::get($pullRequest, 'merged_by'),
+            'head_ref' => Arr::get($pullRequest, 'head_ref'),
+            'base_ref' => Arr::get($pullRequest, 'base_ref'),
+            'closed_at' => $closedAt,
+            'merged_at' => $mergedAt,
+            'closed_without_merge' => ! $isMerged,
             'review_comments_count' => $reviewComments,
             'comments_count' => $comments,
+            'review_count' => $reviewCount,
+            'unique_reviewer_count' => $uniqueReviewerCount,
+            'approvals_count' => $approvalsCount,
+            'changes_requested_count' => $changesRequestedCount,
             'ci_failures_count' => $ciFailures,
             'rework_count' => $rework,
             'story_points' => $storyPoints,
@@ -129,7 +148,8 @@ class IntegrationWebhookIngestService
             'deletions' => $deletions,
             'review_acceptance_rate' => $rework === 0 ? 100 : 0,
             'ci_success_rate' => $ciFailures === 0 ? 100 : 0,
-            'pr_merge_time_hours' => $this->hoursBetween($createdAt, $mergedAt),
+            'pr_open_time_hours' => $this->hoursBetween($createdAt, $completedAt),
+            'pr_merge_time_hours' => $isMerged ? $this->hoursBetween($createdAt, $mergedAt) : null,
         ];
     }
 

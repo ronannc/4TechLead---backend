@@ -3,34 +3,6 @@ name: For Tech Lead - workflow central
 on:
   workflow_call:
     inputs:
-      manual_run:
-        required: false
-        type: boolean
-        default: false
-      external_actor_code:
-        required: false
-        type: string
-        default: ''
-      title:
-        required: false
-        type: string
-        default: Teste manual do GitHub Actions
-      created_at:
-        required: false
-        type: string
-        default: ''
-      story_points:
-        required: false
-        type: string
-        default: '0'
-      task_refs:
-        required: false
-        type: string
-        default: ''
-      dry_run:
-        required: false
-        type: boolean
-        default: false
       actor_map:
         required: false
         type: string
@@ -47,30 +19,21 @@ permissions:
 
 jobs:
   send-pr-metrics:
-    name: Enviar dados do PR mergeado
-    if: ${{ inputs.manual_run || github.event.pull_request.merged == true }}
+    name: Enviar dados do PR fechado
+    if: ${{ github.event.pull_request.state == 'closed' }}
     runs-on: ubuntu-latest
 
     env:
       FOR_TECH_LEAD_API: https://4techlead-backend-production-btqndx.laravel.cloud/
       FOR_TECH_LEAD_TOKEN: ${{ secrets.FOR_TECH_LEAD_TOKEN }}
       FOR_TECH_LEAD_ACTOR_MAP: ${{ inputs.actor_map }}
-      FOR_TECH_LEAD_DRY_RUN: ${{ inputs.manual_run && inputs.dry_run }}
-      FOR_TECH_LEAD_MANUAL_RUN: ${{ inputs.manual_run }}
-      FOR_TECH_LEAD_EXTERNAL_ACTOR_CODE: ${{ inputs.external_actor_code }}
-      FOR_TECH_LEAD_TITLE: ${{ inputs.title }}
-      FOR_TECH_LEAD_CREATED_AT: ${{ inputs.created_at }}
-      FOR_TECH_LEAD_STORY_POINTS: ${{ inputs.story_points }}
-      FOR_TECH_LEAD_TASK_REFS: ${{ inputs.task_refs }}
       GH_TOKEN: ${{ github.token }}
 
     steps:
       - name: Validar configuração
         run: |
-          if [ "$FOR_TECH_LEAD_DRY_RUN" != "true" ]; then
-            test -n "$FOR_TECH_LEAD_API"
-            test -n "$FOR_TECH_LEAD_TOKEN"
-          fi
+          test -n "$FOR_TECH_LEAD_API"
+          test -n "$FOR_TECH_LEAD_TOKEN"
 
       - name: Analisar PR e preparar webhook
         run: |
@@ -80,41 +43,10 @@ jobs:
           async function main() {
             const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
             const repo = event.repository.full_name;
-            const isManualRun = process.env.FOR_TECH_LEAD_MANUAL_RUN === 'true';
-            const dryRun = process.env.FOR_TECH_LEAD_DRY_RUN === 'true';
-            const now = new Date().toISOString();
-            const manualCreatedAt = process.env.FOR_TECH_LEAD_CREATED_AT || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-            const pr = isManualRun
-              ? {
-                number: process.env.GITHUB_RUN_NUMBER,
-                title: process.env.FOR_TECH_LEAD_TITLE || 'Teste manual do GitHub Actions',
-                body: '',
-                labels: [],
-                head: {
-                  ref: process.env.GITHUB_REF_NAME,
-                  sha: process.env.GITHUB_SHA,
-                },
-                base: {
-                  ref: process.env.GITHUB_REF_NAME,
-                },
-                user: {
-                  login: process.env.GITHUB_ACTOR,
-                },
-                merged_by: {
-                  login: process.env.GITHUB_ACTOR,
-                },
-                merged_at: now,
-                created_at: manualCreatedAt,
-                html_url: `${event.repository.html_url}/actions/runs/${process.env.GITHUB_RUN_ID}`,
-                review_comments: 0,
-                comments: 0,
-                changed_files: 0,
-                additions: 0,
-                deletions: 0,
-              }
-              : event.pull_request;
+            const pr = event.pull_request;
             const githubToken = process.env.GH_TOKEN;
             const headSha = pr.head.sha;
+            const isMerged = pr.merged === true;
 
             async function github(path) {
               const response = await fetch(`https://api.github.com${path}`, {
@@ -134,13 +66,6 @@ jobs:
             }
 
             function taskRefs() {
-              if (isManualRun && process.env.FOR_TECH_LEAD_TASK_REFS) {
-                return process.env.FOR_TECH_LEAD_TASK_REFS
-                  .split(',')
-                  .map((ref) => ref.trim())
-                  .filter(Boolean);
-              }
-
               const text = [
                 pr.title,
                 pr.body ?? '',
@@ -149,14 +74,11 @@ jobs:
               ].join('\n');
               const jiraLike = text.match(/\b[A-Z][A-Z0-9]+-\d+\b/g) ?? [];
               const githubIssues = [...text.matchAll(/(?:^|\s)#(\d+)\b/g)].map((match) => `#${match[1]}`);
+
               return [...new Set([...jiraLike, ...githubIssues])];
             }
 
             function storyPoints() {
-              if (isManualRun) {
-                return Number(process.env.FOR_TECH_LEAD_STORY_POINTS || 0);
-              }
-
               for (const label of pr.labels ?? []) {
                 const name = label.name ?? '';
                 const match = name.match(/\b(?:story\s*)?points?\s*[:/-]?\s*(\d+(?:\.\d+)?)\b/i)
@@ -172,10 +94,6 @@ jobs:
             }
 
             function externalActorCode() {
-              if (isManualRun) {
-                return process.env.FOR_TECH_LEAD_EXTERNAL_ACTOR_CODE;
-              }
-
               if (!process.env.FOR_TECH_LEAD_ACTOR_MAP) {
                 return pr.user.login;
               }
@@ -184,17 +102,23 @@ jobs:
               return actorMap[pr.user.login] ?? pr.user.login;
             }
 
-            const [reviews, checks, combinedStatus] = isManualRun
-              ? [null, null, null]
-              : await Promise.all([
-                github(`/repos/${repo}/pulls/${pr.number}/reviews?per_page=100`),
-                github(`/repos/${repo}/commits/${headSha}/check-runs?per_page=100`),
-                github(`/repos/${repo}/commits/${headSha}/status`),
-              ]);
+            const [reviews, checks, combinedStatus] = await Promise.all([
+              github(`/repos/${repo}/pulls/${pr.number}/reviews?per_page=100`),
+              github(`/repos/${repo}/commits/${headSha}/check-runs?per_page=100`),
+              github(`/repos/${repo}/commits/${headSha}/status`),
+            ]);
 
-            const reworkCount = Array.isArray(reviews)
+            const reviewCount = Array.isArray(reviews) ? reviews.length : 0;
+            const uniqueReviewerCount = Array.isArray(reviews)
+              ? new Set(reviews.map((review) => review.user?.login).filter(Boolean)).size
+              : 0;
+            const approvalsCount = Array.isArray(reviews)
+              ? reviews.filter((review) => review.state === 'APPROVED').length
+              : 0;
+            const changesRequestedCount = Array.isArray(reviews)
               ? reviews.filter((review) => review.state === 'CHANGES_REQUESTED').length
               : 0;
+            const reworkCount = changesRequestedCount;
             const failedChecks = Array.isArray(checks?.check_runs)
               ? checks.check_runs.filter((check) => [
                 'action_required',
@@ -210,13 +134,11 @@ jobs:
             const ciFailures = failedChecks + failedStatuses;
 
             const payload = {
-              event_id: isManualRun
-                ? `github:${repo}:workflow_dispatch:${process.env.GITHUB_RUN_ID}:${process.env.GITHUB_RUN_ATTEMPT}`
-                : `github:${repo}:pull_request:${pr.number}:merged`,
-              event_type: 'pull_request_merged',
+              event_id: `github:${repo}:pull_request:${pr.number}:${isMerged ? 'merged' : 'closed'}`,
+              event_type: isMerged ? 'pull_request_merged' : 'pull_request_closed',
               external_actor_code: externalActorCode(),
-              occurred_at: pr.merged_at,
-              source_ref: isManualRun ? `${repo}@${headSha.slice(0, 7)}` : `${repo}#${pr.number}`,
+              occurred_at: pr.merged_at ?? pr.closed_at,
+              source_ref: `${repo}#${pr.number}`,
               payload: {
                 repository: {
                   id: event.repository.id,
@@ -230,9 +152,25 @@ jobs:
                   title: pr.title,
                   url: pr.html_url,
                   author: pr.user.login,
+                  author_id: pr.user.id,
+                  author_association: pr.author_association,
                   merged_by: pr.merged_by?.login ?? null,
+                  merged_by_id: pr.merged_by?.id ?? null,
+                  head_ref: pr.head.ref,
+                  base_ref: pr.base.ref,
+                  head_sha: pr.head.sha,
+                  base_sha: pr.base.sha,
+                  state: pr.state,
+                  merged: isMerged,
+                  draft: pr.draft,
+                  merge_commit_sha: pr.merge_commit_sha,
+                  commits_count: pr.commits ?? 0,
                   review_comments_count: pr.review_comments ?? 0,
                   comments_count: pr.comments ?? 0,
+                  review_count: reviewCount,
+                  unique_reviewer_count: uniqueReviewerCount,
+                  approvals_count: approvalsCount,
+                  changes_requested_count: changesRequestedCount,
                   ci_failures_count: ciFailures,
                   rework_count: reworkCount,
                   story_points: storyPoints(),
@@ -240,17 +178,17 @@ jobs:
                   additions: pr.additions ?? 0,
                   deletions: pr.deletions ?? 0,
                   created_at: pr.created_at ?? null,
-                  merged_at: pr.merged_at,
+                  updated_at: pr.updated_at ?? null,
+                  closed_at: pr.closed_at ?? null,
+                  merged_at: pr.merged_at ?? null,
+                  labels: (pr.labels ?? []).map((label) => label.name).filter(Boolean),
+                  requested_reviewers: (pr.requested_reviewers ?? [])
+                    .map((reviewer) => reviewer.login)
+                    .filter(Boolean),
                   task_refs: taskRefs(),
                 },
               },
             };
-
-            if (dryRun) {
-              console.log('Dry run habilitado. Nenhum dado foi enviado para a API do 4TechLead.');
-              console.log(JSON.stringify(payload, null, 2));
-              return;
-            }
 
             const apiBase = process.env.FOR_TECH_LEAD_API.replace(/\/+$/, '');
             const integrationToken = process.env.FOR_TECH_LEAD_TOKEN;
