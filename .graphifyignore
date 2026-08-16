@@ -1,0 +1,22 @@
+# Secrets and local environment state
+.env*
+auth.json
+
+# External dependencies and generated application output
+vendor/
+node_modules/
+public/build/
+public/storage/
+storage/
+bootstrap/cache/
+
+# Tooling caches and local IDE state
+.phpunit.cache/
+.phpunit.result.cache
+.phpactor.json
+.codex/
+.cursor/
+.idea/
+.vscode/
+.zed/
+*.log

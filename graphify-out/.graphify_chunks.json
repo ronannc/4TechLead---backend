@@ -1,0 +1,114 @@
+[
+  {
+    "chunk_num": 1,
+    "total_chunks": 5,
+    "chunk_path": "/Users/ronan/Developments/ForTechLead/backend/graphify-out/.graphify_chunk_01.json",
+    "files": [
+      "/Users/ronan/Developments/ForTechLead/backend/AGENTS.md",
+      "/Users/ronan/Developments/ForTechLead/backend/CLAUDE.md",
+      "/Users/ronan/Developments/ForTechLead/backend/README.md",
+      "/Users/ronan/Developments/ForTechLead/backend/docker-compose.yml",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/SKILL.md"
+    ]
+  },
+  {
+    "chunk_num": 2,
+    "total_chunks": 5,
+    "chunk_path": "/Users/ronan/Developments/ForTechLead/backend/graphify-out/.graphify_chunk_02.json",
+    "files": [
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/advanced-queries.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/architecture.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/blade-views.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/caching.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/collections.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/config.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/db-performance.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/eloquent.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/error-handling.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/events-notifications.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/http-client.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/mail.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/migrations.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/queue-jobs.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/routing.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/scheduling.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/security.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/style.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/testing.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/laravel-best-practices/rules/validation.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.agents/skills/pest-testing/SKILL.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.ai/skills/deploying-laravel-cloud/SKILL.md"
+    ]
+  },
+  {
+    "chunk_num": 3,
+    "total_chunks": 5,
+    "chunk_path": "/Users/ronan/Developments/ForTechLead/backend/graphify-out/.graphify_chunk_03.json",
+    "files": [
+      "/Users/ronan/Developments/ForTechLead/backend/.ai/skills/deploying-laravel-cloud/reference/checklists.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/SKILL.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/advanced-queries.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/architecture.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/blade-views.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/caching.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/collections.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/config.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/db-performance.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/eloquent.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/error-handling.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/events-notifications.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/http-client.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/mail.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/migrations.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/queue-jobs.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/routing.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/scheduling.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/security.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/style.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/testing.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/laravel-best-practices/rules/validation.md"
+    ]
+  },
+  {
+    "chunk_num": 4,
+    "total_chunks": 5,
+    "chunk_path": "/Users/ronan/Developments/ForTechLead/backend/graphify-out/.graphify_chunk_04.json",
+    "files": [
+      "/Users/ronan/Developments/ForTechLead/backend/.claude/skills/pest-testing/SKILL.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/SKILL.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/advanced-queries.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/architecture.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/blade-views.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/caching.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/collections.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/config.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/db-performance.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/eloquent.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/error-handling.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/events-notifications.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/http-client.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/mail.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/migrations.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/queue-jobs.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/routing.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/scheduling.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/security.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/style.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/testing.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/laravel-best-practices/rules/validation.md"
+    ]
+  },
+  {
+    "chunk_num": 5,
+    "total_chunks": 5,
+    "chunk_path": "/Users/ronan/Developments/ForTechLead/backend/graphify-out/.graphify_chunk_05.json",
+    "files": [
+      "/Users/ronan/Developments/ForTechLead/backend/.github/skills/pest-testing/SKILL.md",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/workflows/for-tech-lead-central.yml",
+      "/Users/ronan/Developments/ForTechLead/backend/.github/workflows/for-tech-lead.yml",
+      "/Users/ronan/Developments/ForTechLead/backend/docs/laravel-cloud.md",
+      "/Users/ronan/Developments/ForTechLead/backend/public/robots.txt",
+      "/Users/ronan/Developments/ForTechLead/backend/resources/docs/index.html"
+    ]
+  }
+]
