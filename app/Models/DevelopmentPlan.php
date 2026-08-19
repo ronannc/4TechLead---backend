@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\Filterable;
 use Database\Factories\DevelopmentPlanFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'person_id',
+    'tenant_id',
     'title',
     'summary',
     'status',
@@ -24,7 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class DevelopmentPlan extends Model
 {
     /** @use HasFactory<DevelopmentPlanFactory> */
-    use Filterable, HasFactory;
+    use BelongsToTenant, Filterable, HasFactory;
 
     protected $with = ['items'];
 

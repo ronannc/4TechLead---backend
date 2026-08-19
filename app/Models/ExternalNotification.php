@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\Filterable;
 use Database\Factories\ExternalNotificationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'integration_system_id',
+    'tenant_id',
     'event_id',
     'title',
     'message',
@@ -24,7 +26,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ExternalNotification extends Model
 {
     /** @use HasFactory<ExternalNotificationFactory> */
-    use Filterable, HasFactory;
+    use BelongsToTenant, Filterable, HasFactory;
 
     /**
      * @return BelongsTo<IntegrationSystem, $this>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\PersonExternalIdentity;
 
+use App\Support\TenantRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -27,11 +28,11 @@ class StorePersonExternalIdentityRequest extends FormRequest
             'person_id' => [
                 'required',
                 'integer',
-                'exists:people,id',
+                TenantRule::exists('people'),
                 Rule::unique('person_external_identities', 'person_id')
                     ->where('integration_system_id', $this->integer('integration_system_id')),
             ],
-            'integration_system_id' => ['required', 'integer', 'exists:integration_systems,id'],
+            'integration_system_id' => ['required', 'integer', TenantRule::exists('integration_systems')],
             'metadata' => ['nullable', 'array'],
             'active' => ['sometimes', 'boolean'],
         ];

@@ -12,7 +12,7 @@ class OneOnOneTemplatePolicy
      */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -20,7 +20,7 @@ class OneOnOneTemplatePolicy
      */
     public function view(User $user, OneOnOneTemplate $oneOnOneTemplate): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -28,7 +28,7 @@ class OneOnOneTemplatePolicy
      */
     public function create(User $user): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -36,7 +36,7 @@ class OneOnOneTemplatePolicy
      */
     public function update(User $user, OneOnOneTemplate $oneOnOneTemplate): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -44,7 +44,7 @@ class OneOnOneTemplatePolicy
      */
     public function delete(User $user, OneOnOneTemplate $oneOnOneTemplate): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**

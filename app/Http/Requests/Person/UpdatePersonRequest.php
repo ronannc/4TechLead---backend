@@ -4,6 +4,7 @@ namespace App\Http\Requests\Person;
 
 use App\Enums\ContractType;
 use App\Enums\SeniorityLevel;
+use App\Support\TenantRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -27,7 +28,7 @@ class UpdatePersonRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'string', 'max:255'],
-            'team_id' => ['sometimes', 'integer', 'exists:teams,id'],
+            'team_id' => ['sometimes', 'integer', TenantRule::exists('teams')],
             'birth_date' => ['sometimes', 'nullable', 'date', 'before:today'],
             'position' => ['sometimes', 'string', 'max:255'],
             'contract_type' => ['sometimes', Rule::enum(ContractType::class)],

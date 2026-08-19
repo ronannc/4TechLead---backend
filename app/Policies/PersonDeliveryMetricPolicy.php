@@ -12,7 +12,7 @@ class PersonDeliveryMetricPolicy
      */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -20,7 +20,7 @@ class PersonDeliveryMetricPolicy
      */
     public function view(User $user, PersonDeliveryMetric $personDeliveryMetric): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**

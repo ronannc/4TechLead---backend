@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\Filterable;
 use Database\Factories\OneOnOneSessionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'person_id',
+    'tenant_id',
     'one_on_one_template_id',
     'scheduled_for',
     'held_at',
@@ -25,7 +27,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class OneOnOneSession extends Model
 {
     /** @use HasFactory<OneOnOneSessionFactory> */
-    use Filterable, HasFactory;
+    use BelongsToTenant, Filterable, HasFactory;
 
     /**
      * @return BelongsTo<Person, $this>

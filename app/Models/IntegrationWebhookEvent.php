@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\Filterable;
 use Database\Factories\IntegrationWebhookEventFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'integration_system_id',
+    'tenant_id',
     'person_id',
     'event_id',
     'event_type',
@@ -25,7 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class IntegrationWebhookEvent extends Model
 {
     /** @use HasFactory<IntegrationWebhookEventFactory> */
-    use Filterable, HasFactory;
+    use BelongsToTenant, Filterable, HasFactory;
 
     /**
      * @return BelongsTo<IntegrationSystem, $this>

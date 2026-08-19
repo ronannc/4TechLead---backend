@@ -48,6 +48,17 @@ it('filters people by team_id', function () {
         ->assertJsonPath('data.0.team_id', $teamA->id);
 });
 
+it('searches people by email', function () {
+    Person::factory()->create(['email' => 'lead@example.com']);
+    Person::factory()->create(['email' => 'member@example.com']);
+
+    $this->actingAs(User::factory()->create(), 'sanctum')
+        ->getJson('/api/v1/people?search=lead@example.com')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.email', 'lead@example.com');
+});
+
 it('orders people by multiple columns', function () {
     Person::factory()->create(['name' => 'Beta']);
     Person::factory()->create(['name' => 'Alpha']);

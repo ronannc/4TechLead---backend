@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DailyEntryStatus;
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\Filterable;
 use Database\Factories\DailyMeetingEntryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 #[Fillable([
     'daily_meeting_id',
+    'tenant_id',
     'team_id',
     'person_id',
     'speaking_order',
@@ -29,7 +31,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class DailyMeetingEntry extends Model
 {
     /** @use HasFactory<DailyMeetingEntryFactory> */
-    use Filterable, HasFactory;
+    use BelongsToTenant, Filterable, HasFactory;
 
     /**
      * Below this fraction of `allotted_seconds`, a turn is considered "spoke too little" rather than

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\DailyMeeting;
 
 use App\Enums\DailyAnnotationType;
+use App\Support\TenantRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -47,13 +48,13 @@ class StoreDailyMeetingRequest extends FormRequest
                 'required',
                 'integer',
                 'distinct',
-                Rule::exists('people', 'id'),
+                TenantRule::exists('people'),
             ],
             'entries.*.actual_seconds' => ['required', 'integer', 'min:0'],
             'annotations' => ['sometimes', 'array'],
             'annotations.*.type' => ['required', Rule::enum(DailyAnnotationType::class)],
             'annotations.*.text' => ['required', 'string', 'max:2000'],
-            'annotations.*.person_id' => ['nullable', 'integer', Rule::exists('people', 'id')],
+            'annotations.*.person_id' => ['nullable', 'integer', TenantRule::exists('people')],
             'annotations.*.resolved' => ['sometimes', 'boolean'],
         ];
     }

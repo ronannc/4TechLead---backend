@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\PersonExternalIdentity;
 
+use App\Support\TenantRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -27,8 +28,8 @@ class IndexPersonExternalIdentityRequest extends FormRequest
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'search' => ['sometimes', 'string', 'max:255'],
             'filters' => ['sometimes', 'array'],
-            'filters.person_id' => ['sometimes', 'integer', 'exists:people,id'],
-            'filters.integration_system_id' => ['sometimes', 'integer', 'exists:integration_systems,id'],
+            'filters.person_id' => ['sometimes', 'integer', TenantRule::exists('people')],
+            'filters.integration_system_id' => ['sometimes', 'integer', TenantRule::exists('integration_systems')],
             'filters.external_code' => ['sometimes', 'string', 'max:255'],
             'filters.active' => ['sometimes', 'boolean'],
             'order' => ['sometimes', 'array'],

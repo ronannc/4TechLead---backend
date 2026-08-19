@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\Filterable;
 use Database\Factories\DailyMeetingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'team_id',
+    'tenant_id',
     'time_limit_seconds',
     'started_at',
     'ended_at',
@@ -19,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class DailyMeeting extends Model
 {
     /** @use HasFactory<DailyMeetingFactory> */
-    use Filterable, HasFactory;
+    use BelongsToTenant, Filterable, HasFactory;
 
     /**
      * Always eager-loaded — CrudControllerTrait/GenericIndexService do not eager-load relations

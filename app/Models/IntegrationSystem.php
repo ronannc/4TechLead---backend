@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\Filterable;
 use Database\Factories\IntegrationSystemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'name',
+    'tenant_id',
     'provider',
     'description',
     'token_hash',
@@ -21,7 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class IntegrationSystem extends Model
 {
     /** @use HasFactory<IntegrationSystemFactory> */
-    use Filterable, HasFactory;
+    use BelongsToTenant, Filterable, HasFactory;
 
     /**
      * @return HasMany<PersonExternalIdentity, $this>

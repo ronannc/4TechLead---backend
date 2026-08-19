@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\DevelopmentPlan;
 
+use App\Support\TenantRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -18,7 +19,7 @@ class StoreDevelopmentPlanRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'person_id' => ['required', 'integer', 'exists:people,id'],
+            'person_id' => ['required', 'integer', TenantRule::exists('people')],
             'title' => ['required', 'string', 'max:255'],
             'summary' => ['nullable', 'string'],
             'status' => ['sometimes', 'string', 'max:50'],

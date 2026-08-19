@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\PersonDeliveryMetric;
 
+use App\Support\TenantRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -27,9 +28,9 @@ class IndexPersonDeliveryMetricRequest extends FormRequest
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'search' => ['sometimes', 'string', 'max:255'],
             'filters' => ['sometimes', 'array'],
-            'filters.person_id' => ['sometimes', 'integer', 'exists:people,id'],
-            'filters.integration_system_id' => ['sometimes', 'integer', 'exists:integration_systems,id'],
-            'filters.integration_webhook_event_id' => ['sometimes', 'integer', 'exists:integration_webhook_events,id'],
+            'filters.person_id' => ['sometimes', 'integer', TenantRule::exists('people')],
+            'filters.integration_system_id' => ['sometimes', 'integer', TenantRule::exists('integration_systems')],
+            'filters.integration_webhook_event_id' => ['sometimes', 'integer', TenantRule::exists('integration_webhook_events')],
             'filters.metric_type' => ['sometimes', 'string', 'max:100'],
             'order' => ['sometimes', 'array'],
         ];

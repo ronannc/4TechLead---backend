@@ -53,6 +53,7 @@ class IntegrationWebhookIngestService
                 ],
                 [
                     'person_id' => $identity?->person_id,
+                    'tenant_id' => $integrationSystem->tenant_id,
                     'event_type' => $data['event_type'],
                     'external_actor_code' => $data['external_actor_code'],
                     'status' => $identity === null ? 'unmapped_person' : 'processed',
@@ -224,6 +225,7 @@ class IntegrationWebhookIngestService
                 'metric_type' => $type,
             ], [
                 'person_id' => $event->person_id,
+                'tenant_id' => $event->tenant_id,
                 'integration_system_id' => $event->integration_system_id,
                 'metric_value' => $value,
                 'unit' => $unit,
@@ -279,6 +281,7 @@ class IntegrationWebhookIngestService
             PersonDeliveryMetric::query()->updateOrCreate(
                 [
                     'person_id' => $event->person_id,
+                    'tenant_id' => $event->tenant_id,
                     'integration_system_id' => null,
                     'integration_webhook_event_id' => null,
                     'metric_type' => $type,

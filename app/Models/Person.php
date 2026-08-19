@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ContractType;
 use App\Enums\SeniorityLevel;
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\Filterable;
 use Database\Factories\PersonFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -12,9 +13,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'name',
+    'tenant_id',
     'team_id',
     'birth_date',
     'position',
@@ -26,7 +29,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Person extends Model
 {
     /** @use HasFactory<PersonFactory> */
-    use Filterable, HasFactory;
+    use BelongsToTenant, Filterable, HasFactory;
 
     /**
      * @return BelongsTo<Team, $this>
@@ -69,6 +72,14 @@ class Person extends Model
     }
 
     /**
+     * @return HasOne<User, $this>
+     */
+    public function user(): HasOne
+    {
+        return $this->hasOne(User::class);
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -104,7 +115,7 @@ class Person extends Model
      */
     protected function searchableFields(): array
     {
-        return ['name', 'position'];
+        return ['name', 'position', 'email'];
     }
 
     /**

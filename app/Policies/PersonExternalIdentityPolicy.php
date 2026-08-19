@@ -12,7 +12,7 @@ class PersonExternalIdentityPolicy
      */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -20,7 +20,7 @@ class PersonExternalIdentityPolicy
      */
     public function view(User $user, PersonExternalIdentity $personExternalIdentity): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -28,7 +28,7 @@ class PersonExternalIdentityPolicy
      */
     public function create(User $user): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -36,7 +36,7 @@ class PersonExternalIdentityPolicy
      */
     public function update(User $user, PersonExternalIdentity $personExternalIdentity): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -44,7 +44,7 @@ class PersonExternalIdentityPolicy
      */
     public function delete(User $user, PersonExternalIdentity $personExternalIdentity): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DailyAnnotationType;
+use App\Models\Concerns\BelongsToTenant;
 use Database\Factories\DailyMeetingAnnotationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'daily_meeting_id',
+    'tenant_id',
     'person_id',
     'type',
     'text',
@@ -19,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class DailyMeetingAnnotation extends Model
 {
     /** @use HasFactory<DailyMeetingAnnotationFactory> */
-    use HasFactory;
+    use BelongsToTenant, HasFactory;
 
     /**
      * @return BelongsTo<DailyMeeting, $this>

@@ -41,11 +41,13 @@ final class DailyMeetingStoreService implements StoreServiceContract
             $meetingAttributes['team_id'] = $uniqueTeamIds->count() === 1 ? $uniqueTeamIds->first() : null;
 
             $meeting = DailyMeeting::query()->create($meetingAttributes);
+            $tenantId = $meeting->tenant_id;
 
             $now = now();
             $rows = array_map(
                 fn (array $entry, int $index): array => [
                     'daily_meeting_id' => $meeting->id,
+                    'tenant_id' => $tenantId,
                     'team_id' => $personTeamIds[$entry['person_id']],
                     'person_id' => $entry['person_id'],
                     'speaking_order' => $index,
@@ -65,6 +67,7 @@ final class DailyMeetingStoreService implements StoreServiceContract
                 DailyMeetingAnnotation::query()->insert(array_map(
                     fn (array $annotation): array => [
                         'daily_meeting_id' => $meeting->id,
+                        'tenant_id' => $tenantId,
                         'person_id' => $annotation['person_id'] ?? null,
                         'type' => $annotation['type'],
                         'text' => $annotation['text'],

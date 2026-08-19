@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\OneOnOneSession;
 
+use App\Support\TenantRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -18,8 +19,8 @@ class StoreOneOnOneSessionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'person_id' => ['required', 'integer', 'exists:people,id'],
-            'one_on_one_template_id' => ['nullable', 'integer', 'exists:one_on_one_templates,id'],
+            'person_id' => ['required', 'integer', TenantRule::exists('people')],
+            'one_on_one_template_id' => ['nullable', 'integer', TenantRule::exists('one_on_one_templates')],
             'scheduled_for' => ['nullable', 'date'],
             'held_at' => ['nullable', 'date'],
             'title' => ['required', 'string', 'max:255'],

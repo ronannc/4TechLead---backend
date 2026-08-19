@@ -16,7 +16,7 @@ class DailyMeetingEntryPolicy
      */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -24,7 +24,7 @@ class DailyMeetingEntryPolicy
      */
     public function view(User $user, DailyMeetingEntry $dailyMeetingEntry): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**

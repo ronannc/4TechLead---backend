@@ -12,7 +12,7 @@ class IntegrationWebhookEventPolicy
      */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -20,7 +20,7 @@ class IntegrationWebhookEventPolicy
      */
     public function view(User $user, IntegrationWebhookEvent $integrationWebhookEvent): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**

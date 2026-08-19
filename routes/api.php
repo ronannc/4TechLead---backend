@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\AuthenticatedPersonController;
 use App\Http\Controllers\Api\V1\DailyMeetingController;
 use App\Http\Controllers\Api\V1\DailyMeetingEntryController;
 use App\Http\Controllers\Api\V1\DevelopmentPlanController;
@@ -15,12 +16,14 @@ use App\Http\Controllers\Api\V1\PersonController;
 use App\Http\Controllers\Api\V1\PersonDeliveryMetricController;
 use App\Http\Controllers\Api\V1\PersonExternalIdentityController;
 use App\Http\Controllers\Api\V1\PersonGrowthSuggestionController;
+use App\Http\Controllers\Api\V1\PersonInvitationController;
 use App\Http\Controllers\Api\V1\TeamController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function (): void {
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login', [AuthController::class, 'login']);
+    Route::post('accept-person-invitation', [AuthController::class, 'acceptPersonInvitation']);
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('logout', [AuthController::class, 'logout']);
@@ -33,8 +36,11 @@ Route::post('notification-webhooks/{integrationSystem}', ExternalNotificationWeb
     ->middleware('throttle:60,1');
 
 Route::middleware('auth:sanctum')->group(function (): void {
+    Route::get('me/person', [AuthenticatedPersonController::class, 'show']);
+    Route::get('me/development-plans', [AuthenticatedPersonController::class, 'developmentPlans']);
     Route::apiResource('teams', TeamController::class);
     Route::apiResource('people', PersonController::class);
+    Route::post('people/{person}/invitation', [PersonInvitationController::class, 'store']);
     Route::post(
         'integration-systems/{integrationSystem}/regenerate-token',
         [IntegrationSystemController::class, 'regenerateToken']

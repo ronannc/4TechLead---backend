@@ -12,7 +12,7 @@ class ExternalNotificationPolicy
      */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -20,7 +20,7 @@ class ExternalNotificationPolicy
      */
     public function view(User $user, ExternalNotification $externalNotification): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**

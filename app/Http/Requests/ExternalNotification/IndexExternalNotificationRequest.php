@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\ExternalNotification;
 
+use App\Support\TenantRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -27,7 +28,7 @@ class IndexExternalNotificationRequest extends FormRequest
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'search' => ['sometimes', 'string', 'max:255'],
             'filters' => ['sometimes', 'array'],
-            'filters.integration_system_id' => ['sometimes', 'integer', 'exists:integration_systems,id'],
+            'filters.integration_system_id' => ['sometimes', 'integer', TenantRule::exists('integration_systems')],
             'filters.type' => ['sometimes', 'string', 'max:100'],
             'filters.severity' => ['sometimes', 'string', 'max:32'],
             'order' => ['sometimes', 'array'],

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\Filterable;
 use Database\Factories\OneOnOneTemplateFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'title',
+    'tenant_id',
     'description',
     'questions',
     'is_default',
@@ -19,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class OneOnOneTemplate extends Model
 {
     /** @use HasFactory<OneOnOneTemplateFactory> */
-    use Filterable, HasFactory;
+    use BelongsToTenant, Filterable, HasFactory;
 
     /**
      * @return HasMany<OneOnOneSession, $this>

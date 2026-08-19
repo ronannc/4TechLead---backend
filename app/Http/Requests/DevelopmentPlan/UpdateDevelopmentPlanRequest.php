@@ -3,6 +3,7 @@
 namespace App\Http\Requests\DevelopmentPlan;
 
 use App\Models\DevelopmentPlan;
+use App\Support\TenantRule;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -21,7 +22,7 @@ class UpdateDevelopmentPlanRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'person_id' => ['sometimes', 'integer', 'exists:people,id'],
+            'person_id' => ['sometimes', 'integer', TenantRule::exists('people')],
             'title' => ['sometimes', 'string', 'max:255'],
             'summary' => ['sometimes', 'nullable', 'string'],
             'status' => ['sometimes', 'string', 'max:50'],

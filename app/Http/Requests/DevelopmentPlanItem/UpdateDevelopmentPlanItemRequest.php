@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\DevelopmentPlanItem;
 
+use App\Support\TenantRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -18,7 +19,7 @@ class UpdateDevelopmentPlanItemRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'development_plan_id' => ['sometimes', 'integer', 'exists:development_plans,id'],
+            'development_plan_id' => ['sometimes', 'integer', TenantRule::exists('development_plans')],
             'title' => ['sometimes', 'string', 'max:255'],
             'description' => ['sometimes', 'nullable', 'string'],
             'competency' => ['sometimes', 'nullable', 'string', 'max:255'],

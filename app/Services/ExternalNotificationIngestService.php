@@ -30,6 +30,7 @@ class ExternalNotificationIngestService
                     'event_id' => $data['event_id'],
                 ],
                 [
+                    'tenant_id' => $integrationSystem->tenant_id,
                     'title' => $data['title'],
                     'message' => $data['message'] ?? null,
                     'type' => $data['type'] ?? null,

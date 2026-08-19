@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\OneOnOneSession;
 
+use App\Support\TenantRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -23,8 +24,8 @@ class IndexOneOnOneSessionRequest extends FormRequest
             'search' => ['sometimes', 'string', 'max:255'],
             'order' => ['sometimes', 'array'],
             'order.*' => ['sometimes', 'string', 'in:asc,desc'],
-            'filters.person_id' => ['sometimes', 'integer', 'exists:people,id'],
-            'filters.one_on_one_template_id' => ['sometimes', 'integer', 'exists:one_on_one_templates,id'],
+            'filters.person_id' => ['sometimes', 'integer', TenantRule::exists('people')],
+            'filters.one_on_one_template_id' => ['sometimes', 'integer', TenantRule::exists('one_on_one_templates')],
             'filters.status' => ['sometimes', 'string', 'max:50'],
             'filters.sentiment' => ['sometimes', 'string', 'max:50'],
         ];

@@ -4,6 +4,7 @@ namespace App\Http\Requests\Person;
 
 use App\Enums\ContractType;
 use App\Enums\SeniorityLevel;
+use App\Support\TenantRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -27,7 +28,7 @@ class StorePersonRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'team_id' => ['required', 'integer', 'exists:teams,id'],
+            'team_id' => ['required', 'integer', TenantRule::exists('teams')],
             'birth_date' => ['nullable', 'date', 'before:today'],
             'position' => ['required', 'string', 'max:255'],
             'contract_type' => ['required', Rule::enum(ContractType::class)],

@@ -12,7 +12,7 @@ class DevelopmentPlanItemPolicy
      */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -20,7 +20,8 @@ class DevelopmentPlanItemPolicy
      */
     public function view(User $user, DevelopmentPlanItem $developmentPlanItem): bool
     {
-        return true;
+        return $user->isTechLead()
+            || $user->isLinkedToPerson($developmentPlanItem->developmentPlan->person);
     }
 
     /**
@@ -28,7 +29,7 @@ class DevelopmentPlanItemPolicy
      */
     public function create(User $user): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -36,7 +37,7 @@ class DevelopmentPlanItemPolicy
      */
     public function update(User $user, DevelopmentPlanItem $developmentPlanItem): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -44,7 +45,7 @@ class DevelopmentPlanItemPolicy
      */
     public function delete(User $user, DevelopmentPlanItem $developmentPlanItem): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**

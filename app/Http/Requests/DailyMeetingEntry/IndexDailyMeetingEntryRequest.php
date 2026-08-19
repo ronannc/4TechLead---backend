@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\DailyMeetingEntry;
 
+use App\Support\TenantRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -27,9 +28,9 @@ class IndexDailyMeetingEntryRequest extends FormRequest
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'order' => ['sometimes', 'array'],
             'order.*' => ['sometimes', 'string', 'in:asc,desc'],
-            'filters.team_id' => ['sometimes', 'integer', 'exists:teams,id'],
-            'filters.person_id' => ['sometimes', 'integer', 'exists:people,id'],
-            'filters.daily_meeting_id' => ['sometimes', 'integer', 'exists:daily_meetings,id'],
+            'filters.team_id' => ['sometimes', 'integer', TenantRule::exists('teams')],
+            'filters.person_id' => ['sometimes', 'integer', TenantRule::exists('people')],
+            'filters.daily_meeting_id' => ['sometimes', 'integer', TenantRule::exists('daily_meetings')],
         ];
     }
 }

@@ -12,7 +12,7 @@ class PersonPolicy
      */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -20,7 +20,7 @@ class PersonPolicy
      */
     public function view(User $user, Person $person): bool
     {
-        return true;
+        return $user->isTechLead() || $user->isLinkedToPerson($person);
     }
 
     /**
@@ -28,7 +28,7 @@ class PersonPolicy
      */
     public function create(User $user): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**
@@ -36,7 +36,7 @@ class PersonPolicy
      */
     public function update(User $user, Person $person): bool
     {
-        return true;
+        return $user->isTechLead() || $user->isLinkedToPerson($person);
     }
 
     /**
@@ -44,7 +44,7 @@ class PersonPolicy
      */
     public function delete(User $user, Person $person): bool
     {
-        return true;
+        return $user->isTechLead();
     }
 
     /**

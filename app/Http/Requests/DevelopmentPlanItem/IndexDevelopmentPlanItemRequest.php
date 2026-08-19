@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\DevelopmentPlanItem;
 
+use App\Support\TenantRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -23,7 +24,7 @@ class IndexDevelopmentPlanItemRequest extends FormRequest
             'search' => ['sometimes', 'string', 'max:255'],
             'order' => ['sometimes', 'array'],
             'order.*' => ['sometimes', 'string', 'in:asc,desc'],
-            'filters.development_plan_id' => ['sometimes', 'integer', 'exists:development_plans,id'],
+            'filters.development_plan_id' => ['sometimes', 'integer', TenantRule::exists('development_plans')],
             'filters.status' => ['sometimes', 'string', 'max:50'],
             'filters.competency' => ['sometimes', 'string', 'max:255'],
         ];

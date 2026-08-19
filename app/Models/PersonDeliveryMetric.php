@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\Filterable;
 use Database\Factories\PersonDeliveryMetricFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'person_id',
+    'tenant_id',
     'integration_system_id',
     'integration_webhook_event_id',
     'metric_type',
@@ -25,7 +27,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PersonDeliveryMetric extends Model
 {
     /** @use HasFactory<PersonDeliveryMetricFactory> */
-    use Filterable, HasFactory;
+    use BelongsToTenant, Filterable, HasFactory;
 
     /**
      * @return BelongsTo<Person, $this>
