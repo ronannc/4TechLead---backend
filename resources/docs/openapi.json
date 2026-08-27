@@ -755,6 +755,155 @@
                 }
             }
         },
+        "/clickup-webhooks": {
+            "post": {
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "Receive a raw ClickUp webhook event",
+                "description": "Public endpoint dedicated to ClickUp. Authenticate with `Authorization: Bearer <webhook_token>`, `X-Integration-Token: <webhook_token>`, or `?token=<webhook_token>`. The ClickUp integration is resolved from the token. The raw body is stored and key ClickUp fields are extracted into `normalized_payload`; this endpoint does not generate delivery metrics yet.",
+                "security": [
+                    {
+                        "webhookBearer": []
+                    },
+                    {
+                        "webhookTokenHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "query",
+                        "required": false,
+                        "description": "Optional webhook token for ClickUp configurations that cannot send custom auth headers.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "clickup-webhook-secret"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": true
+                            },
+                            "examples": {
+                                "automationTask": {
+                                    "summary": "ClickUp Automation task payload",
+                                    "value": {
+                                        "auto_id": "4ff67264-298b-4639-b0a8-4c066025f4e1:main",
+                                        "date": "2026-08-27T01:56:00.000Z",
+                                        "trigger_id": "80c28fd1-2a2c-46a5-a0d6-67b0dbd27633:tasks",
+                                        "payload": {
+                                            "id": "86ak1xv8h",
+                                            "custom_id": "DRIE-21919",
+                                            "name": "Fluxo de cadastro para nova oficina",
+                                            "text_content": "Cadastrar oficina nova e validar fluxo completo.",
+                                            "workspace_id": "31134301",
+                                            "status": {
+                                                "status": "teste de qualidade"
+                                            },
+                                            "lists": [
+                                                {
+                                                    "list_id": "901328281243",
+                                                    "name": "Sprint atual"
+                                                }
+                                            ],
+                                            "ownership": {
+                                                "owner": "230504877"
+                                            }
+                                        }
+                                    }
+                                },
+                                "apiWebhook": {
+                                    "summary": "ClickUp public API webhook payload",
+                                    "value": {
+                                        "webhook_id": "4b67ac88-5749-4fdb-a975-ec5ed16b66e3",
+                                        "event": "taskStatusUpdated",
+                                        "task_id": "86ak1xv8h",
+                                        "history_items": [
+                                            {
+                                                "id": "hist_123",
+                                                "date": "1787795760000",
+                                                "field": "status",
+                                                "before": "open",
+                                                "after": "done",
+                                                "user": {
+                                                    "id": 230504877,
+                                                    "username": "Ronan"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "ClickUp event accepted and stored without generating delivery metrics.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/IntegrationWebhookEvent"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid or missing webhook token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "example": {
+                                    "message": "Invalid integration token."
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Integration is inactive or is not a ClickUp provider.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "example": {
+                                    "message": "Integration provider must be clickup."
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "example": {
+                                    "message": "Too Many Attempts."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/notification-webhooks/{integrationSystem}": {
             "post": {
                 "tags": [

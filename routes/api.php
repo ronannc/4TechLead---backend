@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AuthenticatedPersonController;
+use App\Http\Controllers\Api\V1\ClickUpWebhookController;
 use App\Http\Controllers\Api\V1\DailyMeetingController;
 use App\Http\Controllers\Api\V1\DailyMeetingEntryController;
 use App\Http\Controllers\Api\V1\DevelopmentPlanController;
@@ -32,8 +33,8 @@ Route::prefix('auth')->group(function (): void {
 });
 
 Route::post('integration-webhooks', IntegrationWebhookController::class)->middleware('throttle:60,1');
-Route::post('notification-webhooks/{integrationSystem}', ExternalNotificationWebhookController::class)
-    ->middleware('throttle:60,1');
+Route::post('clickup-webhooks', ClickUpWebhookController::class)->middleware('throttle:60,1');
+Route::post('notification-webhooks/{integrationSystem}', ExternalNotificationWebhookController::class)->middleware('throttle:60,1');
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('me/person', [AuthenticatedPersonController::class, 'show']);

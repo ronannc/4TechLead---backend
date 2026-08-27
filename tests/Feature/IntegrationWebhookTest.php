@@ -5,6 +5,7 @@ use App\Models\Person;
 use App\Models\PersonDeliveryMetric;
 use App\Models\PersonExternalIdentity;
 use App\Models\User;
+use Illuminate\Testing\Fluent\AssertableJson;
 use Laravel\Sanctum\Sanctum;
 
 it('creates an integration system with a one time webhook token', function (): void {
@@ -376,6 +377,117 @@ it('stores unmapped webhook events without generating metrics', function (): voi
     expect(PersonDeliveryMetric::query()->count())->toBe(0);
 });
 
+it('receives a clickup automation webhook and stores the raw payload without generating metrics', function (): void {
+    $token = 'clickup-automation-token';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'clickup',
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+
+    $payload = clickUpAutomationPayload();
+
+    $this->postJson('/api/v1/clickup-webhooks', $payload, [
+        'X-Integration-Token' => $token,
+    ])->assertOk()
+        ->assertJson(fn (AssertableJson $json) => $json
+            ->where('data.integration_system_id', $integration->id)
+            ->where('data.person_id', null)
+            ->where('data.event_id', '80c28fd1-2a2c-46a5-a0d6-67b0dbd27633:tasks')
+            ->where('data.event_type', 'clickup_automation')
+            ->where('data.external_actor_code', 'clickup_user:230504877')
+            ->where('data.status', 'received')
+            ->where('data.payload.auto_id', '4ff67264-298b-4639-b0a8-4c066025f4e1:main')
+            ->where('data.payload.payload.id', '86ak1xv8h')
+            ->where('data.normalized_payload.source', 'clickup')
+            ->where('data.normalized_payload.automation_id', '4ff67264-298b-4639-b0a8-4c066025f4e1:main')
+            ->where('data.normalized_payload.trigger_id', '80c28fd1-2a2c-46a5-a0d6-67b0dbd27633:tasks')
+            ->where('data.normalized_payload.workspace_id', '31134301')
+            ->where('data.normalized_payload.task_id', '86ak1xv8h')
+            ->where('data.normalized_payload.task_custom_id', 'DRIE-21919')
+            ->where('data.normalized_payload.task_name', 'Fluxo de cadastro para nova oficina')
+            ->where('data.normalized_payload.task_text_content', 'Cadastrar oficina nova e validar fluxo completo.')
+            ->where('data.normalized_payload.task_status', 'teste de qualidade')
+            ->where('data.normalized_payload.task_status_id', 'p90131743905_gBTMnApJ')
+            ->where('data.normalized_payload.task_sprint_points', 5)
+            ->where('data.normalized_payload.list_ids.0', '901328281243')
+            ->etc());
+
+    expect(PersonDeliveryMetric::query()->count())->toBe(0);
+});
+
+it('does not duplicate clickup webhook events with the same trigger id', function (): void {
+    $token = 'clickup-automation-token';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'clickup',
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+
+    $payload = clickUpAutomationPayload();
+
+    $this->postJson('/api/v1/clickup-webhooks', $payload, [
+        'Authorization' => "Bearer {$token}",
+    ])->assertOk();
+    $this->postJson('/api/v1/clickup-webhooks', $payload, [
+        'Authorization' => "Bearer {$token}",
+    ])->assertOk();
+
+    expect($integration->webhookEvents()->count())->toBe(1)
+        ->and(PersonDeliveryMetric::query()->count())->toBe(0);
+});
+
+it('receives a clickup api webhook payload using a query token', function (): void {
+    $token = 'clickup-api-webhook-token';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'clickup',
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+
+    $this->postJson(
+        "/api/v1/clickup-webhooks?token={$token}",
+        clickUpApiWebhookPayload(),
+    )->assertOk()
+        ->assertJsonPath('data.event_id', '4b67ac88-5749-4fdb-a975-ec5ed16b66e3:hist_123')
+        ->assertJsonPath('data.event_type', 'taskStatusUpdated')
+        ->assertJsonPath('data.external_actor_code', 'clickup_user:230504877')
+        ->assertJsonPath('data.normalized_payload.history_field', 'status')
+        ->assertJsonPath('data.normalized_payload.history_before', 'open')
+        ->assertJsonPath('data.normalized_payload.history_after', 'done')
+        ->assertJsonPath('data.normalized_payload.user_name', 'Ronan')
+        ->assertJsonPath('data.normalized_payload.task_id', '86ak1xv8h');
+
+    expect(PersonDeliveryMetric::query()->count())->toBe(0);
+});
+
+it('rejects clickup webhooks for non clickup integrations', function (): void {
+    $token = 'github-secret-token';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'github',
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+
+    $this->postJson('/api/v1/clickup-webhooks', clickUpAutomationPayload(), [
+        'Authorization' => "Bearer {$token}",
+    ])->assertUnauthorized();
+});
+
+it('rejects clickup webhooks for inactive clickup integrations resolved by token', function (): void {
+    $token = 'inactive-clickup-token';
+    IntegrationSystem::factory()->create([
+        'provider' => 'clickup',
+        'active' => false,
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+
+    $this->postJson('/api/v1/clickup-webhooks', clickUpAutomationPayload(), [
+        'Authorization' => "Bearer {$token}",
+    ])->assertForbidden();
+});
+
 /**
  * @return array<string, mixed>
  */
@@ -411,6 +523,73 @@ function githubPullRequestPayload(array $overrides = []): array
                 'created_at' => '2026-08-07T10:00:00Z',
                 'closed_at' => '2026-08-08T18:00:00Z',
                 'merged_at' => '2026-08-08T18:00:00Z',
+            ],
+        ],
+    ], $overrides);
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function clickUpAutomationPayload(array $overrides = []): array
+{
+    return array_replace_recursive([
+        'auto_id' => '4ff67264-298b-4639-b0a8-4c066025f4e1:main',
+        'date' => '2026-08-27T01:56:00.000Z',
+        'trigger_id' => '80c28fd1-2a2c-46a5-a0d6-67b0dbd27633:tasks',
+        'payload' => [
+            'id' => '86ak1xv8h',
+            'custom_id' => 'DRIE-21919',
+            'name' => 'Fluxo de cadastro para nova oficina',
+            'text_content' => 'Cadastrar oficina nova e validar fluxo completo.',
+            'status_id' => 'p90131743905_gBTMnApJ',
+            'workspace_id' => '31134301',
+            'sprint_points' => 5,
+            'url' => 'https://app.clickup.com/t/86ak1xv8h',
+            'status' => [
+                'id' => 'p90131743905_gBTMnApJ',
+                'status' => 'teste de qualidade',
+                'color' => '#e16b16',
+            ],
+            'lists' => [
+                [
+                    'list_id' => '901328281243',
+                    'name' => 'Sprint atual',
+                ],
+            ],
+            'ownership' => [
+                'owner' => '230504877',
+            ],
+            'users' => [
+                [
+                    'userid' => 230504877,
+                    'username' => 'Ronan',
+                ],
+            ],
+        ],
+    ], $overrides);
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function clickUpApiWebhookPayload(array $overrides = []): array
+{
+    return array_replace_recursive([
+        'webhook_id' => '4b67ac88-5749-4fdb-a975-ec5ed16b66e3',
+        'event' => 'taskStatusUpdated',
+        'task_id' => '86ak1xv8h',
+        'history_items' => [
+            [
+                'id' => 'hist_123',
+                'date' => '1787795760000',
+                'field' => 'status',
+                'before' => 'open',
+                'after' => 'done',
+                'user' => [
+                    'id' => 230504877,
+                    'username' => 'Ronan',
+                ],
             ],
         ],
     ], $overrides);
