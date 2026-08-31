@@ -26,6 +26,7 @@ it('publishes a valid OpenAPI document for external integrations', function (): 
             '/person-external-identities',
             '/integration-webhooks/{integrationSystem}',
             '/clickup-webhooks',
+            '/github-webhooks',
             '/person-delivery-metrics',
         ])
         ->and($document['components']['schemas'])

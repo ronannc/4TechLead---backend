@@ -5,8 +5,13 @@ use App\Models\Person;
 use App\Models\PersonDeliveryMetric;
 use App\Models\PersonExternalIdentity;
 use App\Models\User;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Testing\Fluent\AssertableJson;
 use Laravel\Sanctum\Sanctum;
+
+beforeEach(function (): void {
+    $this->withoutMiddleware(ThrottleRequests::class);
+});
 
 it('creates an integration system with a one time webhook token', function (): void {
     Sanctum::actingAs(User::factory()->create());
@@ -488,6 +493,149 @@ it('rejects clickup webhooks for inactive clickup integrations resolved by token
     ])->assertForbidden();
 });
 
+it('receives a github pull request webhook and stores the raw payload without generating metrics', function (): void {
+    $token = 'github-webhook-secret';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'github',
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+    $payload = githubNativePullRequestPayload();
+    $rawBody = json_encode($payload, JSON_THROW_ON_ERROR);
+
+    $this->call(
+        'POST',
+        "/api/v1/github-webhooks?token={$token}",
+        server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT' => 'application/json',
+            'HTTP_X_GITHUB_DELIVERY' => '7c4f3d30-42b5-4d4b-9f8f-8d99555d4c15',
+            'HTTP_X_GITHUB_EVENT' => 'pull_request',
+            'HTTP_X_GITHUB_HOOK_ID' => '987654',
+            'HTTP_X_HUB_SIGNATURE_256' => 'sha256='.hash_hmac('sha256', $rawBody, $token),
+        ],
+        content: $rawBody,
+    )->assertOk()
+        ->assertJson(fn (AssertableJson $json) => $json
+            ->where('data.integration_system_id', $integration->id)
+            ->where('data.person_id', null)
+            ->where('data.event_id', '7c4f3d30-42b5-4d4b-9f8f-8d99555d4c15')
+            ->where('data.event_type', 'pull_request.opened')
+            ->where('data.external_actor_code', 'github_user:lucas-github')
+            ->where('data.status', 'received')
+            ->where('data.payload.pull_request.number', 42)
+            ->where('data.normalized_payload.source', 'github')
+            ->where('data.normalized_payload.delivery_id', '7c4f3d30-42b5-4d4b-9f8f-8d99555d4c15')
+            ->where('data.normalized_payload.hook_id', '987654')
+            ->where('data.normalized_payload.repository_full_name', '4techlead/api')
+            ->where('data.normalized_payload.sender_login', 'lucas-github')
+            ->where('data.normalized_payload.pr_number', 42)
+            ->where('data.normalized_payload.pr_title', 'DRIE-21919 entregar fluxo de cadastro')
+            ->where('data.normalized_payload.pr_state', 'open')
+            ->where('data.normalized_payload.pr_draft', false)
+            ->where('data.normalized_payload.pr_merged', false)
+            ->where('data.normalized_payload.pr_author', 'lucas-github')
+            ->where('data.normalized_payload.head_ref', 'feature/DRIE-21919-cadastro-oficina')
+            ->where('data.normalized_payload.base_ref', 'main')
+            ->where('data.normalized_payload.task_refs.0', 'DRIE-21919')
+            ->etc());
+
+    expect(PersonDeliveryMetric::query()->count())->toBe(0);
+});
+
+it('does not duplicate github webhook deliveries', function (): void {
+    $token = 'github-webhook-secret';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'github',
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+    $payload = githubNativePullRequestPayload();
+
+    $this->postJson('/api/v1/github-webhooks', $payload, [
+        'Authorization' => "Bearer {$token}",
+        'X-GitHub-Delivery' => '7c4f3d30-42b5-4d4b-9f8f-8d99555d4c15',
+        'X-GitHub-Event' => 'pull_request',
+    ])->assertOk();
+    $this->postJson('/api/v1/github-webhooks', $payload, [
+        'Authorization' => "Bearer {$token}",
+        'X-GitHub-Delivery' => '7c4f3d30-42b5-4d4b-9f8f-8d99555d4c15',
+        'X-GitHub-Event' => 'pull_request',
+    ])->assertOk();
+
+    expect($integration->webhookEvents()->count())->toBe(1)
+        ->and(PersonDeliveryMetric::query()->count())->toBe(0);
+});
+
+it('receives github ci and review webhook events as operational lake data', function (): void {
+    $token = 'github-webhook-secret';
+    IntegrationSystem::factory()->create([
+        'provider' => 'github-actions',
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+
+    $this->postJson('/api/v1/github-webhooks', githubNativeReviewPayload(), [
+        'X-Integration-Token' => $token,
+        'X-GitHub-Delivery' => 'review-delivery-1',
+        'X-GitHub-Event' => 'pull_request_review',
+    ])->assertOk()
+        ->assertJsonPath('data.event_id', 'review-delivery-1')
+        ->assertJsonPath('data.event_type', 'pull_request_review.submitted')
+        ->assertJsonPath('data.external_actor_code', 'github_user:reviewer-github')
+        ->assertJsonPath('data.normalized_payload.review_state', 'changes_requested')
+        ->assertJsonPath('data.normalized_payload.pr_number', 42)
+        ->assertJsonPath('data.normalized_payload.task_refs.0', 'DRIE-21919');
+
+    $this->postJson('/api/v1/github-webhooks', githubNativeCheckRunPayload(), [
+        'X-Integration-Token' => $token,
+        'X-GitHub-Delivery' => 'check-run-delivery-1',
+        'X-GitHub-Event' => 'check_run',
+    ])->assertOk()
+        ->assertJsonPath('data.event_id', 'check-run-delivery-1')
+        ->assertJsonPath('data.event_type', 'check_run.completed')
+        ->assertJsonPath('data.normalized_payload.check_run_name', 'tests')
+        ->assertJsonPath('data.normalized_payload.check_run_status', 'completed')
+        ->assertJsonPath('data.normalized_payload.check_run_conclusion', 'failure')
+        ->assertJsonPath('data.normalized_payload.pr_number', 42)
+        ->assertJsonPath('data.normalized_payload.head_ref', 'feature/DRIE-21919-cadastro-oficina')
+        ->assertJsonPath('data.normalized_payload.task_refs.0', 'DRIE-21919');
+
+    expect(PersonDeliveryMetric::query()->count())->toBe(0);
+});
+
+it('rejects github webhooks with an invalid signature', function (): void {
+    $token = 'github-webhook-secret';
+    IntegrationSystem::factory()->create([
+        'provider' => 'github',
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+
+    $this->postJson('/api/v1/github-webhooks', githubNativePullRequestPayload(), [
+        'Authorization' => "Bearer {$token}",
+        'X-GitHub-Delivery' => '7c4f3d30-42b5-4d4b-9f8f-8d99555d4c15',
+        'X-GitHub-Event' => 'pull_request',
+        'X-Hub-Signature-256' => 'sha256=invalid',
+    ])->assertForbidden();
+});
+
+it('rejects github webhooks for inactive integrations resolved by token', function (): void {
+    $token = 'inactive-github-token';
+    IntegrationSystem::factory()->create([
+        'provider' => 'github',
+        'active' => false,
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+
+    $this->postJson('/api/v1/github-webhooks', githubNativePullRequestPayload(), [
+        'Authorization' => "Bearer {$token}",
+        'X-GitHub-Delivery' => '7c4f3d30-42b5-4d4b-9f8f-8d99555d4c15',
+        'X-GitHub-Event' => 'pull_request',
+    ])->assertForbidden();
+});
+
 /**
  * @return array<string, mixed>
  */
@@ -589,6 +737,101 @@ function clickUpApiWebhookPayload(array $overrides = []): array
                 'user' => [
                     'id' => 230504877,
                     'username' => 'Ronan',
+                ],
+            ],
+        ],
+    ], $overrides);
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function githubNativePullRequestPayload(array $overrides = []): array
+{
+    return array_replace_recursive([
+        'action' => 'opened',
+        'number' => 42,
+        'repository' => [
+            'id' => 1001,
+            'full_name' => '4techlead/api',
+        ],
+        'organization' => [
+            'login' => '4techlead',
+        ],
+        'sender' => [
+            'login' => 'lucas-github',
+        ],
+        'pull_request' => [
+            'id' => 424242,
+            'number' => 42,
+            'title' => 'DRIE-21919 entregar fluxo de cadastro',
+            'body' => 'Implementa cadastro da tarefa DRIE-21919.',
+            'state' => 'open',
+            'draft' => false,
+            'merged' => false,
+            'created_at' => '2026-08-27T10:00:00Z',
+            'updated_at' => '2026-08-27T10:05:00Z',
+            'closed_at' => null,
+            'merged_at' => null,
+            'user' => [
+                'login' => 'lucas-github',
+            ],
+            'head' => [
+                'ref' => 'feature/DRIE-21919-cadastro-oficina',
+                'sha' => 'abc123',
+            ],
+            'base' => [
+                'ref' => 'main',
+            ],
+        ],
+    ], $overrides);
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function githubNativeReviewPayload(array $overrides = []): array
+{
+    return array_replace_recursive(githubNativePullRequestPayload([
+        'action' => 'submitted',
+        'sender' => [
+            'login' => 'reviewer-github',
+        ],
+        'review' => [
+            'id' => 9001,
+            'state' => 'changes_requested',
+            'submitted_at' => '2026-08-27T11:00:00Z',
+            'user' => [
+                'login' => 'reviewer-github',
+            ],
+        ],
+    ]), $overrides);
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function githubNativeCheckRunPayload(array $overrides = []): array
+{
+    return array_replace_recursive([
+        'action' => 'completed',
+        'repository' => [
+            'id' => 1001,
+            'full_name' => '4techlead/api',
+        ],
+        'sender' => [
+            'login' => 'github-actions[bot]',
+        ],
+        'check_run' => [
+            'id' => 7001,
+            'name' => 'tests',
+            'status' => 'completed',
+            'conclusion' => 'failure',
+            'head_branch' => 'feature/DRIE-21919-cadastro-oficina',
+            'head_sha' => 'abc123',
+            'pull_requests' => [
+                [
+                    'number' => 42,
                 ],
             ],
         ],

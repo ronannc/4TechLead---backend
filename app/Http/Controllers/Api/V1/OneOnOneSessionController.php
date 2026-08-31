@@ -9,6 +9,8 @@ use App\Http\Requests\OneOnOneSession\StoreOneOnOneSessionRequest;
 use App\Http\Requests\OneOnOneSession\UpdateOneOnOneSessionRequest;
 use App\Http\Resources\OneOnOneSessionResource;
 use App\Models\OneOnOneSession;
+use App\Services\OneOnOneSessionIndexService;
+use App\Services\OneOnOneSessionStoreService;
 
 final class OneOnOneSessionController extends Controller
 {
@@ -21,5 +23,7 @@ final class OneOnOneSessionController extends Controller
         $this->storeRequest = StoreOneOnOneSessionRequest::class;
         $this->updateRequest = UpdateOneOnOneSessionRequest::class;
         $this->indexRequest = IndexOneOnOneSessionRequest::class;
+        $this->storeService = app(OneOnOneSessionStoreService::class);
+        $this->indexService = app(OneOnOneSessionIndexService::class);
     }
 }

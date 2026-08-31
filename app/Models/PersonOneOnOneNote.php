@@ -4,30 +4,25 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\Filterable;
-use Database\Factories\OneOnOneSessionFactory;
+use Database\Factories\PersonOneOnOneNoteFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'person_id',
     'tenant_id',
-    'one_on_one_template_id',
-    'document_snapshot',
-    'scheduled_for',
-    'held_at',
+    'person_id',
+    'created_by',
+    'one_on_one_session_id',
     'title',
+    'body',
     'status',
-    'sentiment',
-    'questions',
-    'answers',
-    'notes',
-    'action_items',
+    'occurred_at',
 ])]
-class OneOnOneSession extends Model
+class PersonOneOnOneNote extends Model
 {
-    /** @use HasFactory<OneOnOneSessionFactory> */
+    /** @use HasFactory<PersonOneOnOneNoteFactory> */
     use BelongsToTenant, Filterable, HasFactory;
 
     /**
@@ -39,11 +34,19 @@ class OneOnOneSession extends Model
     }
 
     /**
-     * @return BelongsTo<OneOnOneTemplate, $this>
+     * @return BelongsTo<User, $this>
      */
-    public function template(): BelongsTo
+    public function creator(): BelongsTo
     {
-        return $this->belongsTo(OneOnOneTemplate::class, 'one_on_one_template_id');
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * @return BelongsTo<OneOnOneSession, $this>
+     */
+    public function session(): BelongsTo
+    {
+        return $this->belongsTo(OneOnOneSession::class, 'one_on_one_session_id');
     }
 
     /**
@@ -52,12 +55,7 @@ class OneOnOneSession extends Model
     protected function casts(): array
     {
         return [
-            'scheduled_for' => 'date',
-            'held_at' => 'date',
-            'document_snapshot' => 'array',
-            'questions' => 'array',
-            'answers' => 'array',
-            'action_items' => 'array',
+            'occurred_at' => 'date',
         ];
     }
 
@@ -66,7 +64,7 @@ class OneOnOneSession extends Model
      */
     protected function filterableFields(): array
     {
-        return ['person_id', 'one_on_one_template_id', 'status', 'sentiment'];
+        return ['person_id', 'status', 'one_on_one_session_id'];
     }
 
     /**
@@ -74,7 +72,7 @@ class OneOnOneSession extends Model
      */
     protected function searchableFields(): array
     {
-        return ['title', 'notes'];
+        return ['title', 'body'];
     }
 
     /**
@@ -82,6 +80,6 @@ class OneOnOneSession extends Model
      */
     protected function sortableFields(): array
     {
-        return ['scheduled_for', 'held_at', 'created_at', 'updated_at'];
+        return ['occurred_at', 'created_at', 'updated_at'];
     }
 }

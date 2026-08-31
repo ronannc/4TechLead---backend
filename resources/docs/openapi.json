@@ -904,6 +904,166 @@
                 }
             }
         },
+        "/github-webhooks": {
+            "post": {
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "Receive a raw GitHub webhook event",
+                "description": "Public endpoint dedicated to GitHub operational lake ingestion. Authenticate with `Authorization: Bearer <webhook_token>`, `X-Integration-Token: <webhook_token>`, or `?token=<webhook_token>`. The GitHub integration is resolved from the token. If `X-Hub-Signature-256` is present, the raw request body is validated with HMAC-SHA256. The raw body is stored and key GitHub fields are extracted into `normalized_payload`; this endpoint does not generate delivery metrics yet.",
+                "security": [
+                    {
+                        "webhookBearer": []
+                    },
+                    {
+                        "webhookTokenHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "query",
+                        "required": false,
+                        "description": "Optional webhook token for GitHub webhook URLs. Use the same value as the GitHub webhook secret to enable signature validation.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "github-webhook-secret"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": true
+                            },
+                            "examples": {
+                                "pullRequestOpened": {
+                                    "summary": "GitHub pull request opened",
+                                    "value": {
+                                        "action": "opened",
+                                        "number": 42,
+                                        "repository": {
+                                            "id": 1001,
+                                            "full_name": "4techlead/api"
+                                        },
+                                        "sender": {
+                                            "login": "lucas-github"
+                                        },
+                                        "pull_request": {
+                                            "id": 424242,
+                                            "number": 42,
+                                            "title": "DRIE-21919 entregar fluxo de cadastro",
+                                            "body": "Implementa cadastro da tarefa DRIE-21919.",
+                                            "state": "open",
+                                            "draft": false,
+                                            "merged": false,
+                                            "head": {
+                                                "ref": "feature/DRIE-21919-cadastro-oficina",
+                                                "sha": "abc123"
+                                            },
+                                            "base": {
+                                                "ref": "main"
+                                            },
+                                            "user": {
+                                                "login": "lucas-github"
+                                            }
+                                        }
+                                    }
+                                },
+                                "checkRunFailed": {
+                                    "summary": "GitHub check run failed",
+                                    "value": {
+                                        "action": "completed",
+                                        "repository": {
+                                            "id": 1001,
+                                            "full_name": "4techlead/api"
+                                        },
+                                        "sender": {
+                                            "login": "github-actions[bot]"
+                                        },
+                                        "check_run": {
+                                            "id": 7001,
+                                            "name": "tests",
+                                            "status": "completed",
+                                            "conclusion": "failure",
+                                            "head_branch": "feature/DRIE-21919-cadastro-oficina",
+                                            "head_sha": "abc123",
+                                            "pull_requests": [
+                                                {
+                                                    "number": 42
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "GitHub event accepted and stored without generating delivery metrics.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/IntegrationWebhookEvent"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid or missing webhook token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "example": {
+                                    "message": "Invalid integration token."
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Integration is inactive or the GitHub signature is invalid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "example": {
+                                    "message": "Invalid GitHub signature."
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "example": {
+                                    "message": "Too Many Attempts."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/notification-webhooks/{integrationSystem}": {
             "post": {
                 "tags": [

@@ -38,13 +38,38 @@ it('manages one on one templates and sessions with search and pagination', funct
         ])
         ->assertCreated()
         ->assertJsonPath('data.person_id', $person->id)
-        ->assertJsonPath('data.status', 'completed');
+        ->assertJsonPath('data.status', 'completed')
+        ->assertJsonPath('data.source_document_id', $templateId)
+        ->assertJsonPath('data.document_snapshot.title', '1:1 evolução técnica')
+        ->assertJsonPath('data.document_snapshot.questions.0', 'Qual foi sua principal evolução?');
 
     $this->actingAs(User::factory()->create(), 'sanctum')
         ->getJson("/api/v1/one-on-one-sessions?filters[person_id]={$person->id}&search=incidentes&per_page=5")
         ->assertOk()
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.title', '1:1 Grace - autonomia');
+});
+
+it('lets tech leads register points for future one on ones', function () {
+    $person = Person::factory()->create(['name' => 'Margaret Hamilton']);
+
+    $response = $this->actingAs(User::factory()->create(), 'sanctum')
+        ->postJson('/api/v1/person-one-on-one-notes', [
+            'person_id' => $person->id,
+            'title' => 'Trazer autonomia em incidentes',
+            'body' => 'Assumiu o diagnóstico do incidente sem depender do TL.',
+            'occurred_at' => '2026-08-30',
+        ])
+        ->assertCreated()
+        ->assertJsonPath('data.person_id', $person->id)
+        ->assertJsonPath('data.status', 'open');
+
+    $this->actingAs(User::factory()->create(), 'sanctum')
+        ->putJson("/api/v1/person-one-on-one-notes/{$response->json('data.id')}", [
+            'status' => 'used',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.status', 'used');
 });
 
 it('manages development plans and trackable items', function () {

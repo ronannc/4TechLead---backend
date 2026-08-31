@@ -26,6 +26,7 @@ class StoreOneOnOneSessionRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'status' => ['sometimes', 'string', 'max:50'],
             'sentiment' => ['nullable', 'string', 'max:50'],
+            'document_snapshot' => ['nullable', 'array'],
             'questions' => ['nullable', 'array'],
             'questions.*' => ['required', 'string', 'max:500'],
             'answers' => ['nullable', 'array'],

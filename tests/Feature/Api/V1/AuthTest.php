@@ -258,7 +258,11 @@ it('lets a member read only their own person and development plans through me en
         'title' => 'PDI comunicação técnica',
     ]);
     DevelopmentPlan::factory()->create(['title' => 'PDI de outra pessoa']);
-    OneOnOneSession::factory()->create(['person_id' => $person->id]);
+    $ownSession = OneOnOneSession::factory()->create([
+        'person_id' => $person->id,
+        'title' => '1:1 próprio',
+    ]);
+    OneOnOneSession::factory()->create(['title' => '1:1 de outra pessoa']);
 
     $this->actingAs($member, 'sanctum')
         ->getJson('/api/v1/me/person')
@@ -274,6 +278,17 @@ it('lets a member read only their own person and development plans through me en
 
     $this->actingAs($member, 'sanctum')
         ->getJson('/api/v1/one-on-one-sessions')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', $ownSession->id)
+        ->assertJsonPath('data.0.title', '1:1 próprio');
+
+    $this->actingAs($member, 'sanctum')
+        ->putJson("/api/v1/one-on-one-sessions/{$ownSession->id}", ['title' => 'Tentativa'])
+        ->assertForbidden();
+
+    $this->actingAs($member, 'sanctum')
+        ->deleteJson("/api/v1/one-on-one-sessions/{$ownSession->id}")
         ->assertForbidden();
 
     $this->actingAs($member, 'sanctum')

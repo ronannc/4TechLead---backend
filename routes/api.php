@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\DevelopmentPlanController;
 use App\Http\Controllers\Api\V1\DevelopmentPlanItemController;
 use App\Http\Controllers\Api\V1\ExternalNotificationController;
 use App\Http\Controllers\Api\V1\ExternalNotificationWebhookController;
+use App\Http\Controllers\Api\V1\GitHubWebhookController;
 use App\Http\Controllers\Api\V1\IntegrationSystemController;
 use App\Http\Controllers\Api\V1\IntegrationWebhookController;
 use App\Http\Controllers\Api\V1\OneOnOneSessionController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\Api\V1\PersonDeliveryMetricController;
 use App\Http\Controllers\Api\V1\PersonExternalIdentityController;
 use App\Http\Controllers\Api\V1\PersonGrowthSuggestionController;
 use App\Http\Controllers\Api\V1\PersonInvitationController;
+use App\Http\Controllers\Api\V1\PersonOneOnOneNoteController;
 use App\Http\Controllers\Api\V1\TeamController;
 use Illuminate\Support\Facades\Route;
 
@@ -34,6 +36,7 @@ Route::prefix('auth')->group(function (): void {
 
 Route::post('integration-webhooks', IntegrationWebhookController::class)->middleware('throttle:60,1');
 Route::post('clickup-webhooks', ClickUpWebhookController::class)->middleware('throttle:60,1');
+Route::post('github-webhooks', GitHubWebhookController::class)->middleware('throttle:60,1');
 Route::post('notification-webhooks/{integrationSystem}', ExternalNotificationWebhookController::class)->middleware('throttle:60,1');
 
 Route::middleware('auth:sanctum')->group(function (): void {
@@ -55,6 +58,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('people/{person}/growth-suggestions', PersonGrowthSuggestionController::class);
     Route::apiResource('one-on-one-templates', OneOnOneTemplateController::class);
     Route::apiResource('one-on-one-sessions', OneOnOneSessionController::class);
+    Route::apiResource('person-one-on-one-notes', PersonOneOnOneNoteController::class);
     Route::apiResource('development-plans', DevelopmentPlanController::class);
     Route::apiResource('development-plan-items', DevelopmentPlanItemController::class);
     // Daily history is append-only: only index/show/store are routed (see DailyMeetingPolicy /

@@ -2,25 +2,25 @@
 
 namespace App\Policies;
 
-use App\Models\OneOnOneSession;
+use App\Models\PersonOneOnOneNote;
 use App\Models\User;
 
-class OneOnOneSessionPolicy
+class PersonOneOnOneNotePolicy
 {
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return $user->isTechLead() || $user->isMember();
+        return $user->isTechLead();
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, OneOnOneSession $oneOnOneSession): bool
+    public function view(User $user, PersonOneOnOneNote $personOneOnOneNote): bool
     {
-        return $user->isTechLead() || $user->isLinkedToPerson($oneOnOneSession->person);
+        return $user->isTechLead();
     }
 
     /**
@@ -34,7 +34,7 @@ class OneOnOneSessionPolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, OneOnOneSession $oneOnOneSession): bool
+    public function update(User $user, PersonOneOnOneNote $personOneOnOneNote): bool
     {
         return $user->isTechLead();
     }
@@ -42,7 +42,7 @@ class OneOnOneSessionPolicy
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, OneOnOneSession $oneOnOneSession): bool
+    public function delete(User $user, PersonOneOnOneNote $personOneOnOneNote): bool
     {
         return $user->isTechLead();
     }
@@ -50,7 +50,7 @@ class OneOnOneSessionPolicy
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(User $user, OneOnOneSession $oneOnOneSession): bool
+    public function restore(User $user, PersonOneOnOneNote $personOneOnOneNote): bool
     {
         return false;
     }
@@ -58,7 +58,7 @@ class OneOnOneSessionPolicy
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(User $user, OneOnOneSession $oneOnOneSession): bool
+    public function forceDelete(User $user, PersonOneOnOneNote $personOneOnOneNote): bool
     {
         return false;
     }

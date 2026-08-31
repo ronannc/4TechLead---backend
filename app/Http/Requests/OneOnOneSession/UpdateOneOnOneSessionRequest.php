@@ -26,6 +26,7 @@ class UpdateOneOnOneSessionRequest extends FormRequest
             'title' => ['sometimes', 'string', 'max:255'],
             'status' => ['sometimes', 'string', 'max:50'],
             'sentiment' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'document_snapshot' => ['sometimes', 'nullable', 'array'],
             'questions' => ['sometimes', 'nullable', 'array'],
             'questions.*' => ['required', 'string', 'max:500'],
             'answers' => ['sometimes', 'nullable', 'array'],

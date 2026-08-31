@@ -18,6 +18,8 @@ class OneOnOneSessionResource extends JsonResource
             'id' => $this->id,
             'person_id' => $this->person_id,
             'one_on_one_template_id' => $this->one_on_one_template_id,
+            'source_document_id' => $this->one_on_one_template_id,
+            'document_snapshot' => $this->document_snapshot,
             'scheduled_for' => $this->scheduled_for?->toDateString(),
             'held_at' => $this->held_at?->toDateString(),
             'title' => $this->title,
