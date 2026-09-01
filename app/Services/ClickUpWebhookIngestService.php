@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\IntegrationSystem;
 use App\Models\IntegrationWebhookEvent;
+use App\Models\PersonExternalIdentity;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,8 @@ use Throwable;
 
 final class ClickUpWebhookIngestService
 {
+    public function __construct(private readonly DeliveryMetricIngestService $metricIngestService) {}
+
     /**
      * @param  array<string, mixed>  $payload
      *
@@ -36,6 +39,7 @@ final class ClickUpWebhookIngestService
 
         return DB::transaction(function () use ($integrationSystem, $payload): IntegrationWebhookEvent {
             $normalizedPayload = $this->normalize($payload);
+            $identity = $this->identityFor($integrationSystem, $normalizedPayload['external_actor_code']);
 
             $event = IntegrationWebhookEvent::query()->createOrFirst(
                 [
@@ -44,11 +48,11 @@ final class ClickUpWebhookIngestService
                 ],
                 [
                     'tenant_id' => $integrationSystem->tenant_id,
-                    'person_id' => null,
+                    'person_id' => $identity?->person_id,
                     'event_type' => $normalizedPayload['event_type'],
                     'external_actor_code' => $normalizedPayload['external_actor_code'],
-                    'status' => 'received',
-                    'failure_reason' => null,
+                    'status' => $identity === null ? 'unmapped_person' : 'processed',
+                    'failure_reason' => $identity === null ? 'No active person mapping for external code.' : null,
                     'payload' => $payload,
                     'normalized_payload' => $normalizedPayload,
                     'received_at' => now(),
@@ -57,6 +61,10 @@ final class ClickUpWebhookIngestService
 
             if ($event->wasRecentlyCreated) {
                 $integrationSystem->forceFill(['last_received_at' => now()])->save();
+
+                if ($identity !== null) {
+                    $this->metricIngestService->createClickUpTaskMetrics($event, $normalizedPayload);
+                }
             }
 
             return $event->refresh();
@@ -125,6 +133,8 @@ final class ClickUpWebhookIngestService
             'task_status' => Arr::get($task, 'status.status', Arr::get($task, 'status')),
             'task_status_id' => Arr::get($task, 'status_id'),
             'task_sprint_points' => Arr::get($task, 'sprint_points'),
+            'task_refs' => array_values(array_filter([(string) $customId])),
+            'source_ref' => Arr::get($task, 'url'),
             'list_ids' => $this->listIds($task, $payload),
             'history_item_id' => $historyItemId,
             'history_field' => Arr::get($historyItem, 'field'),
@@ -199,6 +209,19 @@ final class ClickUpWebhookIngestService
             ?? null;
 
         return $userId === null ? null : 'clickup_user:'.$userId;
+    }
+
+    protected function identityFor(IntegrationSystem $integrationSystem, mixed $externalCode): ?PersonExternalIdentity
+    {
+        if (! is_string($externalCode) || $externalCode === '') {
+            return null;
+        }
+
+        return PersonExternalIdentity::query()
+            ->where('integration_system_id', $integrationSystem->id)
+            ->where('external_code', $externalCode)
+            ->where('active', true)
+            ->first();
     }
 
     /**

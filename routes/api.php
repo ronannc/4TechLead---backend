@@ -11,7 +11,6 @@ use App\Http\Controllers\Api\V1\ExternalNotificationController;
 use App\Http\Controllers\Api\V1\ExternalNotificationWebhookController;
 use App\Http\Controllers\Api\V1\GitHubWebhookController;
 use App\Http\Controllers\Api\V1\IntegrationSystemController;
-use App\Http\Controllers\Api\V1\IntegrationWebhookController;
 use App\Http\Controllers\Api\V1\OneOnOneSessionController;
 use App\Http\Controllers\Api\V1\OneOnOneTemplateController;
 use App\Http\Controllers\Api\V1\PersonController;
@@ -34,7 +33,6 @@ Route::prefix('auth')->group(function (): void {
     });
 });
 
-Route::post('integration-webhooks', IntegrationWebhookController::class)->middleware('throttle:60,1');
 Route::post('clickup-webhooks', ClickUpWebhookController::class)->middleware('throttle:60,1');
 Route::post('github-webhooks', GitHubWebhookController::class)->middleware('throttle:60,1');
 Route::post('notification-webhooks/{integrationSystem}', ExternalNotificationWebhookController::class)->middleware('throttle:60,1');

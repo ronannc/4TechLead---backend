@@ -378,26 +378,27 @@ other resource, but neither is a plain CRUD module:
 ## External integrations and webhooks
 
 External systems are registered through authenticated CRUD at `integration-systems`; each create uses
-`IntegrationSystemStoreService` to generate a one-time plaintext token, store only `token_hash`, and
-return the token only in the creation response. Do not generate tokens or apply side effects directly in
-controllers.
+`IntegrationSystemStoreService` to generate a one-time plaintext token, store `token_hash`, store the
+webhook secret encrypted when provider-specific signatures need it, and return the token only in the
+creation/regeneration response. Do not generate tokens or apply side effects directly in controllers.
 
-`POST /api/v1/integration-webhooks/{integrationSystem}` is intentionally public because GitHub, ClickUp,
-and similar systems call it without Sanctum. It must keep explicit operational guards: throttle middleware,
-active integration check, and token validation from either `Authorization: Bearer ...` or
-`X-Integration-Token`. Invalid credentials return 401; inactive integrations return 403; malformed payloads
-remain 422.
+Only provider-specific public ingest routes should exist for official sources: `POST /api/v1/github-webhooks`
+and `POST /api/v1/clickup-webhooks`. Do not reintroduce a generic exposed integration webhook route; if a new
+provider becomes official, add a dedicated controller/service pair with provider-specific authentication and
+normalization.
 
-Webhook ingestion belongs in `IntegrationWebhookIngestService`. It must persist the raw event, normalize the
-payload, update `last_received_at`, and generate `PersonDeliveryMetric` records in one transaction.
+Webhook ingestion belongs in the provider-specific ingest services. They must persist the raw event, normalize
+the payload, update `last_received_at`, and generate `PersonDeliveryMetric` records in one transaction when an
+active `person-external-identities` mapping exists. Shared KPI persistence/calculation belongs in
+`DeliveryMetricIngestService`, not in controllers.
 Idempotency is enforced by the database unique key on `(integration_system_id, event_id)` and code should use
 concurrency-safe create-or-return behavior rather than a separate `first()` then `create()` sequence. Metrics
 are keyed by `(integration_webhook_event_id, metric_type)` and should also be safe to replay.
 
 External actor mapping goes through `person-external-identities`; the pair `(integration_system_id,
 external_code)` is unique and must be validated in Form Requests before hitting the database. Public ingest
-tests should cover success, invalid token, inactive integration, alternate token header, unmapped people, and
-idempotent replay.
+tests should cover success, invalid token/signature, inactive integration, alternate token header where still
+supported, unmapped people, KPI creation for mapped people, and idempotent replay.
 
 ## Authentication (Sanctum bearer tokens)
 

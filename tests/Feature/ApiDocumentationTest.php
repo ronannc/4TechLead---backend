@@ -24,7 +24,6 @@ it('publishes a valid OpenAPI document for external integrations', function (): 
             '/integration-systems/{integrationSystem}/regenerate-token',
             '/people/{person}/invitation',
             '/person-external-identities',
-            '/integration-webhooks/{integrationSystem}',
             '/clickup-webhooks',
             '/github-webhooks',
             '/person-delivery-metrics',
@@ -37,8 +36,6 @@ it('publishes a valid OpenAPI document for external integrations', function (): 
             'AuthTokenResponse',
             'User',
             'PersonInvitation',
-            'IntegrationWebhookRequest',
-            'PullRequestPayload',
             'NormalizedWebhookPayload',
             'PersonDeliveryMetric',
         ])
@@ -53,6 +50,8 @@ it('publishes a valid OpenAPI document for external integrations', function (): 
             'annual_pr_merge_time_average',
             'annual_review_acceptance_rate',
             'annual_ci_success_rate',
+            'task_delivery_count',
+            'annual_task_delivery_count',
         );
 });
 

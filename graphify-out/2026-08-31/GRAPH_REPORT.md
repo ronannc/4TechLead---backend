@@ -1,11 +1,11 @@
 # Graph Report - backend  (2026-08-31)
 
 ## Corpus Check
-- 318 files · ~74,752 words
+- 318 files · ~74,503 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1164 nodes · 2458 edges · 129 communities (81 shown, 48 thin omitted)
+- 1164 nodes · 2455 edges · 122 communities (77 shown, 45 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 69 edges (avg confidence: 0.86)
 - Token cost: 0 input · 0 output
 
@@ -43,7 +43,6 @@
 - DevelopmentPlanItem
 - PersonDeliveryMetric
 - DevelopmentPlan
-- StoreServiceContract.php
 - Illuminate\Foundation\Http\FormRequest
 - AcceptPersonInvitationRequest
 - Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -56,19 +55,17 @@
 - UpdateDevelopmentPlanRequest.php
 - Illuminate\Database\Migrations\Migration
 - Illuminate\Database\Schema\Blueprint
-- Illuminate\Database\Eloquent\Model
 - TenantIsolationTest.php
 - StoreIntegrationWebhookRequest
 - AppServiceProvider
 - UpdateTeamRequest
 - Laravel Cloud Production Deployment
 - GitHubWebhookController.php
-- Illuminate\Support\Str
 - logging.php
 - StoreDailyMeetingRequest
 - DatabaseSeeder.php
 - StorePersonRequest
-- PersonInvitation
+- Illuminate\Database\Eloquent\Model
 - LoginRequest
 - IndexDailyMeetingEntryRequest
 - IndexDevelopmentPlanRequest
@@ -77,7 +74,6 @@
 - StoreOneOnOneSessionRequest
 - UpdateOneOnOneSessionRequest
 - StoreOneOnOneTemplateRequest
-- Illuminate\Support\Facades\DB
 - IntegrationSystemController.php
 - IndexDailyMeetingRequest
 - UpdatePersonExternalIdentityRequest
@@ -104,17 +100,14 @@
 - require
 - psr-4
 - UserFactory
-- IntegrationSystemStoreService.php
 - PersonExternalIdentity.php
 - post-create-project-cmd
-- .store
-- ExternalNotificationIngestService
 - extra
 
 ## God Nodes (most connected - your core abstractions)
 1. `User` - 156 edges
 2. `Person` - 67 edges
-3. `IntegrationSystem` - 60 edges
+3. `IntegrationSystem` - 57 edges
 4. `TenantRule` - 46 edges
 5. `Controller` - 44 edges
 6. `Team` - 35 edges
@@ -148,7 +141,7 @@
 - **Laravel Data Access Quality Rules** — backend__agents_skills_laravel_best_practices_rules_advanced_queries_advanced_query_patterns, backend__agents_skills_laravel_best_practices_rules_db_performance_database_performance_best_practices, backend__agents_skills_laravel_best_practices_rules_eloquent_eloquent_best_practices, backend__agents_skills_laravel_best_practices_rules_migrations_migration_best_practices, backend__agents_skills_laravel_best_practices_rules_collections_collection_best_practices [INFERRED 0.85]
 - **Laravel Delivery Flow** — _github_skills_laravel_best_practices_rules_routing_routing_controllers_best_practices, _github_skills_laravel_best_practices_rules_architecture_architecture_best_practices, _github_skills_laravel_best_practices_rules_security_security_best_practices, _github_skills_laravel_best_practices_rules_error_handling_error_handling_best_practices [INFERRED 0.85]
 
-## Communities (129 total, 48 thin omitted)
+## Communities (122 total, 45 thin omitted)
 
 ### Community 0 - "Illuminate\Http\Request"
 Cohesion: 0.08
@@ -246,10 +239,6 @@ Nodes (7): Illuminate\Foundation\Application, Illuminate\Foundation\Configuratio
 Cohesion: 0.15
 Nodes (3): PersonGrowthSuggestionController, Person, PersonPolicy
 
-### Community 28 - "StoreServiceContract.php"
-Cohesion: 0.21
-Nodes (4): store(), GenericStoreService, OneOnOneSessionStoreService, PersonOneOnOneNoteStoreService
-
 ### Community 29 - "Illuminate\Foundation\Http\FormRequest"
 Cohesion: 0.09
 Nodes (8): RegisterRequest, StoreIntegrationSystemRequest, UpdateIntegrationSystemRequest, IndexOneOnOneTemplateRequest, UpdateOneOnOneTemplateRequest, IndexTeamRequest, StoreTeamRequest, Illuminate\Foundation\Http\FormRequest
@@ -261,10 +250,6 @@ Nodes (3): PersonOneOnOneNote, PersonOneOnOneNotePolicy, Illuminate\Database\Elo
 ### Community 38 - "UpdateDevelopmentPlanRequest.php"
 Cohesion: 0.29
 Nodes (3): UpdateDevelopmentPlanRequest, Carbon\CarbonImmutable, Illuminate\Validation\Validator
-
-### Community 41 - "Illuminate\Database\Eloquent\Model"
-Cohesion: 0.33
-Nodes (5): delete(), update(), GenericDeleteService, GenericUpdateService, Illuminate\Database\Eloquent\Model
 
 ### Community 42 - "TenantIsolationTest.php"
 Cohesion: 0.28
@@ -278,10 +263,6 @@ Nodes (6): Local Backend Docker Stack, Laravel Cloud Production Deployment, Open
 Cohesion: 0.22
 Nodes (3): ClickUpWebhookController, GitHubWebhookController, IntegrationWebhookEventResource
 
-### Community 48 - "Illuminate\Support\Str"
-Cohesion: 0.22
-Nodes (3): PersonExternalIdentityStoreService, Illuminate\Support\Str, Pdo\Mysql
-
 ### Community 49 - "logging.php"
 Cohesion: 0.40
 Nodes (4): Monolog\Handler\NullHandler, Monolog\Handler\StreamHandler, Monolog\Handler\SyslogUdpHandler, Monolog\Processor\PsrLogMessageProcessor
@@ -290,13 +271,9 @@ Nodes (4): Monolog\Handler\NullHandler, Monolog\Handler\StreamHandler, Monolog\H
 Cohesion: 0.60
 Nodes (3): DatabaseSeeder, Illuminate\Database\Console\Seeds\WithoutModelEvents, Illuminate\Database\Seeder
 
-### Community 53 - "PersonInvitation"
-Cohesion: 0.18
-Nodes (5): PersonInvitation, AcceptPersonInvitationService, PersonInvitationCreateService, Illuminate\Support\Facades\Hash, Illuminate\Validation\ValidationException
-
-### Community 68 - "Illuminate\Support\Facades\DB"
-Cohesion: 0.28
-Nodes (7): RegisterUserService, Illuminate\Support\Arr, Illuminate\Support\Carbon, Illuminate\Support\Facades\DB, Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException, Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException, Throwable
+### Community 53 - "Illuminate\Database\Eloquent\Model"
+Cohesion: 0.05
+Nodes (27): delete(), store(), update(), PersonInvitation, AcceptPersonInvitationService, RegisterUserService, DailyMeetingStoreService, ExternalNotificationIngestService (+19 more)
 
 ### Community 69 - "IntegrationSystemController.php"
 Cohesion: 0.29
@@ -341,17 +318,17 @@ Nodes (3): extra, laravel, dont-discover
 ## Knowledge Gaps
 - **82 isolated node(s):** `php`, `docker-entrypoint.sh script`, `php`, `$schema`, `name` (+77 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **48 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **45 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `User` connect `User` to `DailyMeetingEntry`, `Team`, `ExternalNotification`, `IntegrationWebhookEvent`, `Illuminate\Database\Eloquent\Factories\HasFactory`, `IntegrationWebhookTest.php`, `IntegrationSystem`, `Person`, `DevelopmentPlanItem`, `PersonDeliveryMetric`, `DevelopmentPlan`, `Illuminate\Database\Eloquent\Relations\BelongsTo`, `OneOnOneSession`, `OneOnOneTemplate`, `TenantIsolationTest.php`, `DatabaseSeeder.php`, `PersonInvitation`, `Illuminate\Support\Facades\DB`, `LogoutService.php`?**
+- **Why does `User` connect `User` to `OneOnOneSession`, `DailyMeetingEntry`, `Team`, `OneOnOneTemplate`, `ExternalNotification`, `IntegrationWebhookEvent`, `TenantIsolationTest.php`, `Illuminate\Database\Eloquent\Factories\HasFactory`, `LogoutService.php`, `DatabaseSeeder.php`, `IntegrationWebhookTest.php`, `IntegrationSystem`, `Illuminate\Database\Eloquent\Model`, `Person`, `DevelopmentPlanItem`, `PersonDeliveryMetric`, `DevelopmentPlan`, `Illuminate\Database\Eloquent\Relations\BelongsTo`?**
   _High betweenness centrality (0.141) - this node is a cross-community bridge._
-- **Why does `Person` connect `Person` to `DailyMeetingEntry`, `Controller`, `Team`, `Illuminate\Database\Eloquent\Factories\HasFactory`, `Illuminate\Http\JsonResponse`, `Illuminate\Contracts\Validation\ValidationRule`, `Illuminate\Database\Eloquent\Factories\Factory`, `IntegrationWebhookTest.php`, `IntegrationSystem`, `DevelopmentPlan`, `Illuminate\Database\Eloquent\Relations\BelongsTo`, `Illuminate\Database\Eloquent\Model`, `TenantIsolationTest.php`, `PersonInvitation`, `Illuminate\Support\Facades\DB`, `Filterable.php`, `Person.php`, `PersonExternalIdentity.php`, `.store`?**
-  _High betweenness centrality (0.071) - this node is a cross-community bridge._
-- **Why does `IntegrationSystem` connect `IntegrationSystem` to `Controller`, `Illuminate\Support\Facades\DB`, `IntegrationSystemController.php`, `Illuminate\Database\Eloquent\Model`, `TenantIsolationTest.php`, `IntegrationWebhookEvent`, `Illuminate\Database\Eloquent\Factories\HasFactory`, `Filterable.php`, `GitHubWebhookController.php`, `Illuminate\Database\Eloquent\Factories\Factory`, `IntegrationWebhookTest.php`, `IntegrationSystemStoreService.php`, `PersonExternalIdentity.php`, `ExternalNotificationIngestService`?**
-  _High betweenness centrality (0.054) - this node is a cross-community bridge._
+- **Why does `Person` connect `Person` to `DailyMeetingEntry`, `Controller`, `Team`, `TenantIsolationTest.php`, `Illuminate\Database\Eloquent\Factories\HasFactory`, `Filterable.php`, `Illuminate\Http\JsonResponse`, `Illuminate\Contracts\Validation\ValidationRule`, `Illuminate\Database\Eloquent\Factories\Factory`, `IntegrationWebhookTest.php`, `IntegrationSystem`, `Illuminate\Database\Eloquent\Model`, `PersonExternalIdentity.php`, `DevelopmentPlan`, `Person.php`, `Illuminate\Database\Eloquent\Relations\BelongsTo`?**
+  _High betweenness centrality (0.075) - this node is a cross-community bridge._
+- **Why does `IntegrationSystem` connect `IntegrationSystem` to `Controller`, `IntegrationSystemController.php`, `TenantIsolationTest.php`, `IntegrationWebhookEvent`, `Illuminate\Database\Eloquent\Factories\HasFactory`, `Filterable.php`, `Illuminate\Database\Eloquent\Factories\Factory`, `IntegrationWebhookTest.php`, `Illuminate\Database\Eloquent\Model`, `PersonExternalIdentity.php`?**
+  _High betweenness centrality (0.043) - this node is a cross-community bridge._
 - **What connects `php`, `docker-entrypoint.sh script`, `php` to the rest of the system?**
   _82 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Illuminate\Http\Request` be split into smaller, more focused modules?**

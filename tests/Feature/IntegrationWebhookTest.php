@@ -74,13 +74,34 @@ it('regenerates an integration webhook token and invalidates the old token', fun
     expect($integration->webhook_secret)->toBe($newToken);
     expect($integration->token_prefix)->toBe(substr($newToken, 0, 8));
 
-    $this->postJson('/api/v1/integration-webhooks', githubPullRequestPayload(), [
-        'Authorization' => "Bearer {$oldToken}",
-    ])->assertUnauthorized();
+    $payload = githubNativePullRequestPayload();
+    $rawBody = json_encode($payload, JSON_THROW_ON_ERROR);
 
-    $this->postJson('/api/v1/integration-webhooks', githubPullRequestPayload(), [
-        'Authorization' => "Bearer {$newToken}",
-    ])->assertOk()
+    $this->call(
+        'POST',
+        '/api/v1/github-webhooks',
+        server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT' => 'application/json',
+            'HTTP_X_GITHUB_DELIVERY' => 'old-token-delivery',
+            'HTTP_X_GITHUB_EVENT' => 'pull_request',
+            'HTTP_X_HUB_SIGNATURE_256' => 'sha256='.hash_hmac('sha256', $rawBody, $oldToken),
+        ],
+        content: $rawBody,
+    )->assertForbidden();
+
+    $this->call(
+        'POST',
+        '/api/v1/github-webhooks',
+        server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT' => 'application/json',
+            'HTTP_X_GITHUB_DELIVERY' => 'new-token-delivery',
+            'HTTP_X_GITHUB_EVENT' => 'pull_request',
+            'HTTP_X_HUB_SIGNATURE_256' => 'sha256='.hash_hmac('sha256', $rawBody, $newToken),
+        ],
+        content: $rawBody,
+    )->assertOk()
         ->assertJsonPath('data.status', 'unmapped_person');
 });
 
@@ -122,276 +143,6 @@ it('rejects duplicate person mappings for the same integration system', function
         ->assertJsonValidationErrors('person_id');
 });
 
-it('receives a github pull request webhook and creates delivery metrics for the mapped person', function (): void {
-    $token = 'github-secret-token';
-    $integration = IntegrationSystem::factory()->create([
-        'provider' => 'github',
-        'token_hash' => hash('sha256', $token),
-        'token_prefix' => substr($token, 0, 8),
-    ]);
-    $person = Person::factory()->create();
-    PersonExternalIdentity::factory()->create([
-        'person_id' => $person->id,
-        'integration_system_id' => $integration->id,
-        'external_code' => 'lucas-github',
-    ]);
-
-    $payload = githubPullRequestPayload();
-
-    $this->postJson(
-        '/api/v1/integration-webhooks',
-        $payload,
-        ['Authorization' => "Bearer {$token}"],
-    )->assertOk()
-        ->assertJsonPath('data.person_id', $person->id)
-        ->assertJsonPath('data.status', 'processed')
-        ->assertJsonPath('data.normalized_payload.quality_score', 55)
-        ->assertJsonPath('data.normalized_payload.changed_lines', 500)
-        ->assertJsonPath('data.normalized_payload.review_count', 3)
-        ->assertJsonPath('data.normalized_payload.head_ref', 'feature/payments')
-        ->assertJsonPath('data.normalized_payload.base_ref', 'main')
-        ->assertJsonPath('data.normalized_payload.review_acceptance_rate', 0)
-        ->assertJsonPath('data.normalized_payload.ci_success_rate', 0)
-        ->assertJsonPath('data.normalized_payload.pr_open_time_hours', 32)
-        ->assertJsonPath('data.normalized_payload.pr_merge_time_hours', 32)
-        ->assertJsonMissingPath('data.normalized_payload.analysis');
-
-    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(21);
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'code_quality_score')
-            ->value('metric_value'),
-    )->toBe('55.00');
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'code_quality_score')
-            ->firstOrFail()
-            ->metadata,
-    )->not->toHaveKey('analysis');
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'delivery_points')
-            ->value('metric_value'),
-    )->toBe('8.00');
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'delivery_analysis')
-            ->exists(),
-    )->toBeFalse();
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'annual_ci_failure_average')
-            ->value('metric_value'),
-    )->toBe('1.00');
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'annual_review_comment_average')
-            ->value('metric_value'),
-    )->toBe('5.00');
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'annual_rework_average')
-            ->value('metric_value'),
-    )->toBe('1.00');
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'annual_pr_size_average')
-            ->value('metric_value'),
-    )->toBe('500.00');
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'annual_pr_merge_time_average')
-            ->value('metric_value'),
-    )->toBe('32.00');
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'annual_review_acceptance_rate')
-            ->value('metric_value'),
-    )->toBe('0.00');
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'annual_ci_success_rate')
-            ->value('metric_value'),
-    )->toBe('0.00');
-});
-
-it('does not duplicate metrics when the same webhook event is received again', function (): void {
-    $token = 'github-secret-token';
-    $integration = IntegrationSystem::factory()->create([
-        'token_hash' => hash('sha256', $token),
-        'token_prefix' => substr($token, 0, 8),
-    ]);
-    $person = Person::factory()->create();
-    PersonExternalIdentity::factory()->create([
-        'person_id' => $person->id,
-        'integration_system_id' => $integration->id,
-        'external_code' => 'lucas-github',
-    ]);
-
-    $payload = githubPullRequestPayload();
-
-    $this->postJson('/api/v1/integration-webhooks', $payload, [
-        'Authorization' => "Bearer {$token}",
-    ])->assertOk();
-    $this->postJson('/api/v1/integration-webhooks', $payload, [
-        'Authorization' => "Bearer {$token}",
-    ])->assertOk();
-
-    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(21);
-});
-
-it('accepts a closed pull request without merge and stores the richer payload without delivery metrics', function (): void {
-    $token = 'github-secret-token';
-    $integration = IntegrationSystem::factory()->create([
-        'provider' => 'github',
-        'token_hash' => hash('sha256', $token),
-        'token_prefix' => substr($token, 0, 8),
-    ]);
-    $person = Person::factory()->create();
-    PersonExternalIdentity::factory()->create([
-        'person_id' => $person->id,
-        'integration_system_id' => $integration->id,
-        'external_code' => 'lucas-github',
-    ]);
-
-    $payload = githubPullRequestPayload([
-        'event_id' => 'github-pr-42-closed',
-        'event_type' => 'pull_request_closed',
-        'occurred_at' => '2026-08-08T18:00:00Z',
-        'payload' => [
-            'pull_request' => [
-                'closed_at' => '2026-08-08T18:00:00Z',
-                'merged_at' => null,
-            ],
-        ],
-    ]);
-
-    $this->postJson('/api/v1/integration-webhooks', $payload, [
-        'Authorization' => "Bearer {$token}",
-    ])->assertOk()
-        ->assertJsonPath('data.status', 'processed')
-        ->assertJsonPath('data.normalized_payload.closed_without_merge', true)
-        ->assertJsonPath('data.normalized_payload.pr_open_time_hours', 32)
-        ->assertJsonPath('data.normalized_payload.pr_merge_time_hours', null);
-
-    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(0);
-});
-
-it('rejects webhooks with an invalid token', function (): void {
-    $integration = IntegrationSystem::factory()->create([
-        'token_hash' => hash('sha256', 'valid-token'),
-        'token_prefix' => 'valid-to',
-    ]);
-
-    $this->postJson('/api/v1/integration-webhooks', githubPullRequestPayload(), [
-        'Authorization' => 'Bearer invalid-token',
-    ])->assertUnauthorized();
-});
-
-it('rejects merged pull request webhooks missing required pull request metrics', function (): void {
-    $token = 'github-secret-token';
-    IntegrationSystem::factory()->create([
-        'token_hash' => hash('sha256', $token),
-        'token_prefix' => substr($token, 0, 8),
-    ]);
-
-    $payload = githubPullRequestPayload();
-    unset($payload['payload']['pull_request']['created_at']);
-
-    $this->postJson('/api/v1/integration-webhooks', $payload, [
-        'Authorization' => "Bearer {$token}",
-    ])->assertUnprocessable()
-        ->assertJsonValidationErrors('payload.pull_request.created_at');
-});
-
-it('rejects webhooks for inactive integrations', function (): void {
-    $token = 'github-secret-token';
-    $integration = IntegrationSystem::factory()->create([
-        'active' => false,
-        'token_hash' => hash('sha256', $token),
-        'token_prefix' => substr($token, 0, 8),
-    ]);
-
-    $this->postJson('/api/v1/integration-webhooks', githubPullRequestPayload(), [
-        'Authorization' => "Bearer {$token}",
-    ])->assertForbidden();
-});
-
-it('accepts integration tokens through the x integration token header', function (): void {
-    $token = 'github-secret-token';
-    $integration = IntegrationSystem::factory()->create([
-        'token_hash' => hash('sha256', $token),
-        'token_prefix' => substr($token, 0, 8),
-    ]);
-
-    $this->postJson('/api/v1/integration-webhooks', githubPullRequestPayload(), [
-        'X-Integration-Token' => $token,
-    ])->assertOk()
-        ->assertJsonPath('data.status', 'unmapped_person');
-});
-
-it('resolves the integration from the bearer token without requiring the integration id in the path', function (): void {
-    $token = 'github-actions-project-token';
-    $integration = IntegrationSystem::factory()->create([
-        'provider' => 'github-actions',
-        'token_hash' => hash('sha256', $token),
-        'token_prefix' => substr($token, 0, 8),
-    ]);
-    $person = Person::factory()->create();
-    PersonExternalIdentity::factory()->create([
-        'person_id' => $person->id,
-        'integration_system_id' => $integration->id,
-        'external_code' => 'lucas-github-id',
-    ]);
-
-    $payload = githubPullRequestPayload([
-        'event_id' => 'github-pr-43-merged',
-        'external_actor_code' => 'lucas-github-id',
-    ]);
-
-    $this->postJson('/api/v1/integration-webhooks', $payload, [
-        'Authorization' => "Bearer {$token}",
-    ])->assertOk()
-        ->assertJsonPath('data.integration_system_id', $integration->id)
-        ->assertJsonPath('data.person_id', $person->id)
-        ->assertJsonPath('data.status', 'processed');
-
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('integration_system_id', $integration->id)
-            ->where('metric_type', 'pull_request_count')
-            ->exists(),
-    )->toBeTrue();
-});
-
-it('stores unmapped webhook events without generating metrics', function (): void {
-    $token = 'github-secret-token';
-    $integration = IntegrationSystem::factory()->create([
-        'token_hash' => hash('sha256', $token),
-        'token_prefix' => substr($token, 0, 8),
-    ]);
-
-    $this->postJson('/api/v1/integration-webhooks', githubPullRequestPayload(), [
-        'Authorization' => "Bearer {$token}",
-    ])->assertOk()
-        ->assertJsonPath('data.status', 'unmapped_person')
-        ->assertJsonPath('data.person_id', null);
-
-    expect(PersonDeliveryMetric::query()->count())->toBe(0);
-});
-
 it('receives a clickup automation webhook and stores the raw payload without generating metrics', function (): void {
     $token = 'clickup-automation-token';
     $integration = IntegrationSystem::factory()->create([
@@ -411,7 +162,7 @@ it('receives a clickup automation webhook and stores the raw payload without gen
             ->where('data.event_id', '80c28fd1-2a2c-46a5-a0d6-67b0dbd27633:tasks')
             ->where('data.event_type', 'clickup_automation')
             ->where('data.external_actor_code', 'clickup_user:230504877')
-            ->where('data.status', 'received')
+            ->where('data.status', 'unmapped_person')
             ->where('data.payload.auto_id', '4ff67264-298b-4639-b0a8-4c066025f4e1:main')
             ->where('data.payload.payload.id', '86ak1xv8h')
             ->where('data.normalized_payload.source', 'clickup')
@@ -429,6 +180,47 @@ it('receives a clickup automation webhook and stores the raw payload without gen
             ->etc());
 
     expect(PersonDeliveryMetric::query()->count())->toBe(0);
+});
+
+it('creates delivery metrics from a mapped clickup webhook', function (): void {
+    $token = 'clickup-automation-token';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'clickup',
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+    $person = Person::factory()->create();
+    PersonExternalIdentity::factory()->create([
+        'person_id' => $person->id,
+        'integration_system_id' => $integration->id,
+        'external_code' => 'clickup_user:230504877',
+    ]);
+
+    $this->postJson('/api/v1/clickup-webhooks', clickUpAutomationPayload(), [
+        'X-Integration-Token' => $token,
+    ])->assertOk()
+        ->assertJsonPath('data.person_id', $person->id)
+        ->assertJsonPath('data.status', 'processed');
+
+    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(4);
+    expect(
+        PersonDeliveryMetric::query()
+            ->where('person_id', $person->id)
+            ->where('metric_type', 'task_delivery_count')
+            ->value('metric_value'),
+    )->toBe('1.00');
+    expect(
+        PersonDeliveryMetric::query()
+            ->where('person_id', $person->id)
+            ->where('metric_type', 'delivery_points')
+            ->value('metric_value'),
+    )->toBe('5.00');
+    expect(
+        PersonDeliveryMetric::query()
+            ->where('person_id', $person->id)
+            ->where('metric_type', 'annual_task_delivery_count')
+            ->value('metric_value'),
+    )->toBe('1.00');
 });
 
 it('does not duplicate clickup webhook events with the same trigger id', function (): void {
@@ -532,7 +324,7 @@ it('receives a github pull request webhook and stores the raw payload without ge
             ->where('data.event_id', '7c4f3d30-42b5-4d4b-9f8f-8d99555d4c15')
             ->where('data.event_type', 'pull_request.opened')
             ->where('data.external_actor_code', 'github_user:lucas-github')
-            ->where('data.status', 'received')
+            ->where('data.status', 'unmapped_person')
             ->where('data.payload.pull_request.number', 42)
             ->where('data.normalized_payload.source', 'github')
             ->where('data.normalized_payload.delivery_id', '7c4f3d30-42b5-4d4b-9f8f-8d99555d4c15')
@@ -582,6 +374,74 @@ it('receives a signed github webhook through a url without a token or integratio
         ->assertJsonPath('data.normalized_payload.source', 'github');
 
     expect(PersonDeliveryMetric::query()->count())->toBe(0);
+});
+
+it('creates delivery metrics from a mapped merged github pull request webhook', function (): void {
+    $token = 'github-webhook-secret';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'github',
+        'token_hash' => hash('sha256', $token),
+        'webhook_secret' => $token,
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+    $person = Person::factory()->create();
+    PersonExternalIdentity::factory()->create([
+        'person_id' => $person->id,
+        'integration_system_id' => $integration->id,
+        'external_code' => 'github_user:lucas-github',
+    ]);
+    $payload = githubNativePullRequestPayload([
+        'action' => 'closed',
+        'pull_request' => [
+            'state' => 'closed',
+            'merged' => true,
+            'closed_at' => '2026-08-28T18:00:00Z',
+            'merged_at' => '2026-08-28T18:00:00Z',
+            'comments' => 8,
+            'review_comments' => 5,
+            'changed_files' => 12,
+            'additions' => 420,
+            'deletions' => 80,
+        ],
+    ]);
+    $rawBody = json_encode($payload, JSON_THROW_ON_ERROR);
+
+    $this->call(
+        'POST',
+        '/api/v1/github-webhooks',
+        server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT' => 'application/json',
+            'HTTP_X_GITHUB_DELIVERY' => 'merged-delivery-1',
+            'HTTP_X_GITHUB_EVENT' => 'pull_request',
+            'HTTP_X_HUB_SIGNATURE_256' => 'sha256='.hash_hmac('sha256', $rawBody, $token),
+        ],
+        content: $rawBody,
+    )->assertOk()
+        ->assertJsonPath('data.person_id', $person->id)
+        ->assertJsonPath('data.status', 'processed')
+        ->assertJsonPath('data.normalized_payload.changed_lines', 500)
+        ->assertJsonPath('data.normalized_payload.pr_merge_time_hours', 32);
+
+    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(20);
+    expect(
+        PersonDeliveryMetric::query()
+            ->where('person_id', $person->id)
+            ->where('metric_type', 'pull_request_count')
+            ->value('metric_value'),
+    )->toBe('1.00');
+    expect(
+        PersonDeliveryMetric::query()
+            ->where('person_id', $person->id)
+            ->where('metric_type', 'changed_lines_count')
+            ->value('metric_value'),
+    )->toBe('500.00');
+    expect(
+        PersonDeliveryMetric::query()
+            ->where('person_id', $person->id)
+            ->where('metric_type', 'annual_pr_merge_time_average')
+            ->value('metric_value'),
+    )->toBe('32.00');
 });
 
 it('rejects github webhook urls without a token when the signature is missing', function (): void {
@@ -691,46 +551,6 @@ it('rejects github webhooks for inactive integrations resolved by token', functi
         'X-GitHub-Event' => 'pull_request',
     ])->assertForbidden();
 });
-
-/**
- * @return array<string, mixed>
- */
-function githubPullRequestPayload(array $overrides = []): array
-{
-    return array_replace_recursive([
-        'event_id' => 'github-pr-42-merged',
-        'event_type' => 'pull_request_merged',
-        'external_actor_code' => 'lucas-github',
-        'occurred_at' => '2026-08-08T18:00:00Z',
-        'source_ref' => 'org/repo#42',
-        'payload' => [
-            'task_refs' => ['ABC-123'],
-            'pull_request' => [
-                'number' => 42,
-                'title' => 'ABC-123 entregar fluxo de pagamentos',
-                'author' => 'lucas-github',
-                'merged_by' => 'ronannc',
-                'head_ref' => 'feature/payments',
-                'base_ref' => 'main',
-                'review_comments_count' => 5,
-                'comments_count' => 8,
-                'review_count' => 3,
-                'unique_reviewer_count' => 2,
-                'approvals_count' => 1,
-                'changes_requested_count' => 1,
-                'ci_failures_count' => 1,
-                'rework_count' => 1,
-                'story_points' => 8,
-                'changed_files' => 12,
-                'additions' => 420,
-                'deletions' => 80,
-                'created_at' => '2026-08-07T10:00:00Z',
-                'closed_at' => '2026-08-08T18:00:00Z',
-                'merged_at' => '2026-08-08T18:00:00Z',
-            ],
-        ],
-    ], $overrides);
-}
 
 /**
  * @return array<string, mixed>

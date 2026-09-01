@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\IntegrationSystem;
 use App\Models\IntegrationWebhookEvent;
+use App\Models\PersonExternalIdentity;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,8 @@ use Throwable;
 
 final class GitHubWebhookIngestService
 {
+    public function __construct(private readonly DeliveryMetricIngestService $metricIngestService) {}
+
     /**
      * @param  array<string, mixed>  $payload
      * @param  array<string, mixed>  $headers
@@ -60,6 +63,7 @@ final class GitHubWebhookIngestService
     ): IntegrationWebhookEvent {
         return DB::transaction(function () use ($integrationSystem, $payload, $headers): IntegrationWebhookEvent {
             $normalizedPayload = $this->normalize($payload, $headers);
+            $identity = $this->identityFor($integrationSystem, $this->metricActorCode($normalizedPayload));
 
             $event = IntegrationWebhookEvent::query()->createOrFirst(
                 [
@@ -68,11 +72,11 @@ final class GitHubWebhookIngestService
                 ],
                 [
                     'tenant_id' => $integrationSystem->tenant_id,
-                    'person_id' => null,
+                    'person_id' => $identity?->person_id,
                     'event_type' => $normalizedPayload['event_type'],
                     'external_actor_code' => $normalizedPayload['external_actor_code'],
-                    'status' => 'received',
-                    'failure_reason' => null,
+                    'status' => $identity === null ? 'unmapped_person' : 'processed',
+                    'failure_reason' => $identity === null ? 'No active person mapping for external code.' : null,
                     'payload' => $payload,
                     'normalized_payload' => $normalizedPayload,
                     'received_at' => now(),
@@ -81,6 +85,10 @@ final class GitHubWebhookIngestService
 
             if ($event->wasRecentlyCreated) {
                 $integrationSystem->forceFill(['last_received_at' => now()])->save();
+
+                if ($identity !== null && $this->shouldCreatePullRequestMetrics($normalizedPayload)) {
+                    $this->metricIngestService->createPullRequestMetrics($event, $normalizedPayload);
+                }
             }
 
             return $event->refresh();
@@ -173,12 +181,16 @@ final class GitHubWebhookIngestService
         $checkSuite = (array) Arr::get($payload, 'check_suite', []);
         $workflowRun = (array) Arr::get($payload, 'workflow_run', []);
         $repository = (array) Arr::get($payload, 'repository', []);
+        $closedAt = $this->timestamp(Arr::get($pullRequest, 'closed_at'));
+        $mergedAt = $this->timestamp(Arr::get($pullRequest, 'merged_at'));
+        $completedAt = $mergedAt ?? $closedAt;
 
         return [
             'source' => 'github',
             'event_id' => $this->eventId($payload, $headers, $event, $action),
             'event_type' => $action === null ? $event : $event.'.'.$action,
             'external_actor_code' => $this->externalActorCode($payload),
+            'occurred_at' => $completedAt ?? $this->timestamp(Arr::get($payload, 'repository.pushed_at')),
             'delivery_id' => $headers['delivery'] ?? null,
             'hook_id' => $headers['hook_id'] ?? null,
             'repository_id' => Arr::get($repository, 'id'),
@@ -192,13 +204,17 @@ final class GitHubWebhookIngestService
             'pr_draft' => Arr::get($pullRequest, 'draft'),
             'pr_merged' => Arr::get($pullRequest, 'merged'),
             'pr_author' => Arr::get($pullRequest, 'user.login'),
+            'source_ref' => Arr::get($payload, 'repository.full_name') === null || $this->pullRequestNumber($payload) === null
+                ? null
+                : Arr::get($payload, 'repository.full_name').'#'.$this->pullRequestNumber($payload),
             'head_ref' => Arr::get($pullRequest, 'head.ref', Arr::get($checkRun, 'head_branch', Arr::get($workflowRun, 'head_branch'))),
             'head_sha' => Arr::get($pullRequest, 'head.sha', Arr::get($checkRun, 'head_sha', Arr::get($workflowRun, 'head_sha'))),
             'base_ref' => Arr::get($pullRequest, 'base.ref'),
             'created_at' => $this->timestamp(Arr::get($pullRequest, 'created_at')),
             'updated_at' => $this->timestamp(Arr::get($pullRequest, 'updated_at')),
-            'closed_at' => $this->timestamp(Arr::get($pullRequest, 'closed_at')),
-            'merged_at' => $this->timestamp(Arr::get($pullRequest, 'merged_at')),
+            'closed_at' => $closedAt,
+            'merged_at' => $mergedAt,
+            'closed_without_merge' => $closedAt !== null && $mergedAt === null,
             'review_id' => Arr::get($review, 'id'),
             'review_state' => Arr::get($review, 'state'),
             'review_submitted_at' => $this->timestamp(Arr::get($review, 'submitted_at')),
@@ -216,7 +232,96 @@ final class GitHubWebhookIngestService
             'workflow_run_status' => Arr::get($workflowRun, 'status'),
             'workflow_run_conclusion' => Arr::get($workflowRun, 'conclusion'),
             'task_refs' => $this->taskRefs($payload),
+            'quality_score' => $this->qualityScore(
+                reviewComments: (int) $this->number($pullRequest, 'review_comments'),
+                ciFailures: 0,
+                rework: 0,
+            ),
+            'review_comments_count' => (int) $this->number($pullRequest, 'review_comments'),
+            'comments_count' => (int) $this->number($pullRequest, 'comments'),
+            'review_count' => (int) $this->number($pullRequest, 'review_count'),
+            'unique_reviewer_count' => (int) $this->number($pullRequest, 'unique_reviewer_count'),
+            'approvals_count' => (int) $this->number($pullRequest, 'approvals_count'),
+            'changes_requested_count' => (int) $this->number($pullRequest, 'changes_requested_count'),
+            'ci_failures_count' => 0,
+            'rework_count' => 0,
+            'story_points' => $this->number($pullRequest, 'story_points'),
+            'changed_files' => (int) $this->number($pullRequest, 'changed_files'),
+            'changed_lines' => $this->number($pullRequest, 'additions') + $this->number($pullRequest, 'deletions'),
+            'additions' => $this->number($pullRequest, 'additions'),
+            'deletions' => $this->number($pullRequest, 'deletions'),
+            'review_acceptance_rate' => 100,
+            'ci_success_rate' => 100,
+            'pr_open_time_hours' => $this->hoursBetween(
+                Arr::get($pullRequest, 'created_at'),
+                Arr::get($pullRequest, 'merged_at', Arr::get($pullRequest, 'closed_at')),
+            ),
+            'pr_merge_time_hours' => Arr::get($pullRequest, 'merged_at') === null
+                ? null
+                : $this->hoursBetween(Arr::get($pullRequest, 'created_at'), Arr::get($pullRequest, 'merged_at')),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $pullRequest
+     */
+    protected function number(array $pullRequest, string $key): float|int
+    {
+        $value = Arr::get($pullRequest, $key, 0);
+
+        return is_numeric($value) ? $value + 0 : 0;
+    }
+
+    protected function qualityScore(int $reviewComments, int $ciFailures, int $rework): int
+    {
+        return max(0, min(100, 100 - ($ciFailures * 15) - ($reviewComments * 2) - ($rework * 20)));
+    }
+
+    protected function hoursBetween(mixed $start, mixed $end): ?float
+    {
+        if ($start === null || $end === null) {
+            return null;
+        }
+
+        try {
+            return round(Carbon::parse($start)->floatDiffInHours(Carbon::parse($end)), 2);
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $normalizedPayload
+     */
+    protected function metricActorCode(array $normalizedPayload): ?string
+    {
+        $author = $normalizedPayload['pr_author'] ?? null;
+
+        return is_string($author) && $author !== ''
+            ? 'github_user:'.$author
+            : $normalizedPayload['external_actor_code'];
+    }
+
+    protected function identityFor(IntegrationSystem $integrationSystem, ?string $externalCode): ?PersonExternalIdentity
+    {
+        if ($externalCode === null || $externalCode === '') {
+            return null;
+        }
+
+        return PersonExternalIdentity::query()
+            ->where('integration_system_id', $integrationSystem->id)
+            ->where('external_code', $externalCode)
+            ->where('active', true)
+            ->first();
+    }
+
+    /**
+     * @param  array<string, mixed>  $normalizedPayload
+     */
+    protected function shouldCreatePullRequestMetrics(array $normalizedPayload): bool
+    {
+        return $normalizedPayload['event_type'] === 'pull_request.closed'
+            && $normalizedPayload['pr_merged'] === true;
     }
 
     /**
