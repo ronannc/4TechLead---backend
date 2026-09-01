@@ -6,6 +6,7 @@ use App\Models\PersonDeliveryMetric;
 use App\Models\PersonExternalIdentity;
 use App\Models\User;
 use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\Fluent\AssertableJson;
 use Laravel\Sanctum\Sanctum;
 
@@ -30,12 +31,20 @@ it('creates an integration system with a one time webhook token', function (): v
         ->assertJsonStructure(['data' => ['id', 'token_prefix', 'webhook_token']]);
 
     $token = $response->json('data.webhook_token');
+    $webhookUrl = $response->json('data.webhook_url');
     expect($token)->toBeString()->not->toBe('');
+    expect($webhookUrl)
+        ->toBeString()
+        ->toEndWith('/api/v1/github-webhooks')
+        ->not->toContain($token);
 
     $integration = IntegrationSystem::query()->firstOrFail();
+    $storedSecret = DB::table('integration_systems')->where('id', $integration->id)->value('webhook_secret');
 
     expect($integration->token_hash)->toBe(hash('sha256', $token));
+    expect($integration->webhook_secret)->toBe($token);
     expect($integration->token_hash)->not->toBe($token);
+    expect($storedSecret)->not->toBe($token);
 });
 
 it('regenerates an integration webhook token and invalidates the old token', function (): void {
@@ -62,6 +71,7 @@ it('regenerates an integration webhook token and invalidates the old token', fun
     $integration->refresh();
 
     expect($integration->token_hash)->toBe(hash('sha256', $newToken));
+    expect($integration->webhook_secret)->toBe($newToken);
     expect($integration->token_prefix)->toBe(substr($newToken, 0, 8));
 
     $this->postJson('/api/v1/integration-webhooks', githubPullRequestPayload(), [
@@ -541,6 +551,52 @@ it('receives a github pull request webhook and stores the raw payload without ge
             ->etc());
 
     expect(PersonDeliveryMetric::query()->count())->toBe(0);
+});
+
+it('receives a signed github webhook through a url without a token or integration id', function (): void {
+    $token = 'github-webhook-secret';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'github',
+        'token_hash' => hash('sha256', $token),
+        'webhook_secret' => $token,
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+    $payload = githubNativePullRequestPayload();
+    $rawBody = json_encode($payload, JSON_THROW_ON_ERROR);
+
+    $this->call(
+        'POST',
+        '/api/v1/github-webhooks',
+        server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT' => 'application/json',
+            'HTTP_X_GITHUB_DELIVERY' => 'signed-delivery-1',
+            'HTTP_X_GITHUB_EVENT' => 'pull_request',
+            'HTTP_X_HUB_SIGNATURE_256' => 'sha256='.hash_hmac('sha256', $rawBody, $token),
+        ],
+        content: $rawBody,
+    )->assertOk()
+        ->assertJsonPath('data.integration_system_id', $integration->id)
+        ->assertJsonPath('data.event_id', 'signed-delivery-1')
+        ->assertJsonPath('data.event_type', 'pull_request.opened')
+        ->assertJsonPath('data.normalized_payload.source', 'github');
+
+    expect(PersonDeliveryMetric::query()->count())->toBe(0);
+});
+
+it('rejects github webhook urls without a token when the signature is missing', function (): void {
+    $token = 'github-webhook-secret';
+    IntegrationSystem::factory()->create([
+        'provider' => 'github',
+        'token_hash' => hash('sha256', $token),
+        'webhook_secret' => $token,
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+
+    $this->postJson('/api/v1/github-webhooks', githubNativePullRequestPayload(), [
+        'X-GitHub-Delivery' => 'signed-delivery-1',
+        'X-GitHub-Event' => 'pull_request',
+    ])->assertForbidden();
 });
 
 it('does not duplicate github webhook deliveries', function (): void {

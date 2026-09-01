@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'provider',
     'description',
     'token_hash',
+    'webhook_secret',
     'token_prefix',
     'active',
     'last_received_at',
@@ -63,6 +64,7 @@ class IntegrationSystem extends Model
     protected function casts(): array
     {
         return [
+            'webhook_secret' => 'encrypted',
             'active' => 'boolean',
             'last_received_at' => 'datetime',
         ];

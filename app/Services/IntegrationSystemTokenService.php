@@ -19,6 +19,7 @@ final class IntegrationSystemTokenService
 
             $integrationSystem->forceFill([
                 'token_hash' => hash('sha256', $token),
+                'webhook_secret' => $token,
                 'token_prefix' => substr($token, 0, 8),
             ])->save();
 

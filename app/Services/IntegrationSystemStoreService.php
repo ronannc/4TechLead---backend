@@ -25,6 +25,7 @@ final class IntegrationSystemStoreService implements StoreServiceContract
                 ...$attributes,
                 'active' => $attributes['active'] ?? true,
                 'token_hash' => hash('sha256', $token),
+                'webhook_secret' => $token,
                 'token_prefix' => substr($token, 0, 8),
             ]);
             $integration->setAttribute('webhook_token', $token);

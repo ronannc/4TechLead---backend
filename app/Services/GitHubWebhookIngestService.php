@@ -25,6 +25,39 @@ final class GitHubWebhookIngestService
 
         $this->assertCanReceive($integrationSystem, $token, $rawBody, (string) ($headers['signature_256'] ?? ''));
 
+        return $this->storeEvent($integrationSystem, $payload, $headers);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $headers
+     *
+     * @throws Throwable
+     */
+    public function ingestSigned(
+        array $payload,
+        string $rawBody,
+        array $headers,
+    ): IntegrationWebhookEvent {
+        $integrationSystem = $this->integrationSystemBySignature(
+            $rawBody,
+            (string) ($headers['signature_256'] ?? ''),
+        );
+
+        return $this->storeEvent($integrationSystem, $payload, $headers);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $headers
+     *
+     * @throws Throwable
+     */
+    protected function storeEvent(
+        IntegrationSystem $integrationSystem,
+        array $payload,
+        array $headers,
+    ): IntegrationWebhookEvent {
         return DB::transaction(function () use ($integrationSystem, $payload, $headers): IntegrationWebhookEvent {
             $normalizedPayload = $this->normalize($payload, $headers);
 
@@ -66,6 +99,35 @@ final class GitHubWebhookIngestService
         }
 
         return $integrationSystem;
+    }
+
+    protected function integrationSystemBySignature(string $rawBody, string $signature): IntegrationSystem
+    {
+        if ($signature === '') {
+            throw new AccessDeniedHttpException('Missing GitHub signature.');
+        }
+
+        $integrationSystems = IntegrationSystem::query()
+            ->whereIn('provider', ['github', 'github-actions'])
+            ->where('active', true)
+            ->whereNotNull('webhook_secret')
+            ->get();
+
+        foreach ($integrationSystems as $integrationSystem) {
+            $secret = $integrationSystem->webhook_secret;
+
+            if (! is_string($secret) || $secret === '') {
+                continue;
+            }
+
+            $expectedSignature = 'sha256='.hash_hmac('sha256', $rawBody, $secret);
+
+            if (hash_equals($expectedSignature, $signature)) {
+                return $integrationSystem;
+            }
+        }
+
+        throw new AccessDeniedHttpException('Invalid GitHub signature.');
     }
 
     protected function assertCanReceive(
