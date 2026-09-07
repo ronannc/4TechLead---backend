@@ -143,7 +143,7 @@ it('rejects duplicate person mappings for the same integration system', function
         ->assertJsonValidationErrors('person_id');
 });
 
-it('receives a clickup automation webhook and stores the raw payload without generating metrics', function (): void {
+it('receives a clickup automation webhook and stores only the processed payload without generating metrics', function (): void {
     $token = 'clickup-automation-token';
     $integration = IntegrationSystem::factory()->create([
         'provider' => 'clickup',
@@ -163,8 +163,11 @@ it('receives a clickup automation webhook and stores the raw payload without gen
             ->where('data.event_type', 'clickup_automation')
             ->where('data.external_actor_code', 'clickup_user:230504877')
             ->where('data.status', 'unmapped_person')
-            ->where('data.payload.auto_id', '4ff67264-298b-4639-b0a8-4c066025f4e1:main')
-            ->where('data.payload.payload.id', '86ak1xv8h')
+            ->where('data.payload.event_type', 'clickup_automation')
+            ->where('data.payload.task.id', '86ak1xv8h')
+            ->where('data.payload.task.custom_id', 'DRIE-21919')
+            ->whereType('data.payload_hash', 'string')
+            ->whereType('data.payload_size_bytes', 'integer')
             ->where('data.normalized_payload.source', 'clickup')
             ->where('data.normalized_payload.automation_id', '4ff67264-298b-4639-b0a8-4c066025f4e1:main')
             ->where('data.normalized_payload.trigger_id', '80c28fd1-2a2c-46a5-a0d6-67b0dbd27633:tasks')
@@ -172,14 +175,36 @@ it('receives a clickup automation webhook and stores the raw payload without gen
             ->where('data.normalized_payload.task_id', '86ak1xv8h')
             ->where('data.normalized_payload.task_custom_id', 'DRIE-21919')
             ->where('data.normalized_payload.task_name', 'Fluxo de cadastro para nova oficina')
-            ->where('data.normalized_payload.task_text_content', 'Cadastrar oficina nova e validar fluxo completo.')
             ->where('data.normalized_payload.task_status', 'teste de qualidade')
             ->where('data.normalized_payload.task_status_id', 'p90131743905_gBTMnApJ')
             ->where('data.normalized_payload.task_sprint_points', 5)
             ->where('data.normalized_payload.list_ids.0', '901328281243')
             ->etc());
 
+    $event = $integration->webhookEvents()->firstOrFail();
+    expect(data_get($event->payload, 'payload.text_content'))->toBeNull()
+        ->and(data_get($event->normalized_payload, 'task_text_content'))->toBeNull();
+
     expect(PersonDeliveryMetric::query()->count())->toBe(0);
+});
+
+it('maps a clickup webhook to a person by the clickup user id stored on the person', function (): void {
+    $token = 'clickup-automation-token';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'clickup',
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+    $person = Person::factory()->create([
+        'tenant_id' => $integration->tenant_id,
+        'clickup_user_id' => '230504877',
+    ]);
+
+    $this->postJson('/api/v1/clickup-webhooks', clickUpAutomationPayload(), [
+        'X-Integration-Token' => $token,
+    ])->assertOk()
+        ->assertJsonPath('data.person_id', $person->id)
+        ->assertJsonPath('data.status', 'processed');
 });
 
 it('stores a mapped clickup webhook as lake data without generating delivery metrics', function (): void {
@@ -277,7 +302,7 @@ it('rejects clickup webhooks for inactive clickup integrations resolved by token
     ])->assertForbidden();
 });
 
-it('receives a github pull request webhook and stores the raw payload without generating metrics', function (): void {
+it('receives a github pull request webhook and stores only the processed payload without generating metrics', function (): void {
     $token = 'github-webhook-secret';
     $integration = IntegrationSystem::factory()->create([
         'provider' => 'github',
@@ -307,7 +332,11 @@ it('receives a github pull request webhook and stores the raw payload without ge
             ->where('data.event_type', 'pull_request.opened')
             ->where('data.external_actor_code', 'github_user:lucas-github')
             ->where('data.status', 'unmapped_person')
+            ->where('data.payload.event_type', 'pull_request.opened')
             ->where('data.payload.pull_request.number', 42)
+            ->where('data.payload.pull_request.author_login', 'lucas-github')
+            ->whereType('data.payload_hash', 'string')
+            ->whereType('data.payload_size_bytes', 'integer')
             ->where('data.normalized_payload.source', 'github')
             ->where('data.normalized_payload.delivery_id', '7c4f3d30-42b5-4d4b-9f8f-8d99555d4c15')
             ->where('data.normalized_payload.hook_id', '987654')
@@ -324,7 +353,33 @@ it('receives a github pull request webhook and stores the raw payload without ge
             ->where('data.normalized_payload.task_refs.0', 'DRIE-21919')
             ->etc());
 
+    $event = $integration->webhookEvents()->firstOrFail();
+    expect(data_get($event->payload, 'pull_request.body'))->toBeNull()
+        ->and(data_get($event->payload, 'sender'))->toBeNull();
+
     expect(PersonDeliveryMetric::query()->count())->toBe(0);
+});
+
+it('maps a github pull request webhook to a person by the github username stored on the person', function (): void {
+    $token = 'github-webhook-secret';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'github',
+        'token_hash' => hash('sha256', $token),
+        'webhook_secret' => $token,
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+    $person = Person::factory()->create([
+        'tenant_id' => $integration->tenant_id,
+        'github_username' => 'lucas-github',
+    ]);
+
+    $this->postJson('/api/v1/github-webhooks', githubNativePullRequestPayload(), [
+        'Authorization' => "Bearer {$token}",
+        'X-GitHub-Delivery' => 'person-github-id-delivery',
+        'X-GitHub-Event' => 'pull_request',
+    ])->assertOk()
+        ->assertJsonPath('data.person_id', $person->id)
+        ->assertJsonPath('data.status', 'processed');
 });
 
 it('receives a signed github webhook through a url without a token or integration id', function (): void {
@@ -480,6 +535,33 @@ it('receives github ci and review webhook events as operational lake data', func
         ->assertJsonPath('data.normalized_payload.pr_number', 42)
         ->assertJsonPath('data.normalized_payload.head_ref', 'feature/DRIE-21919-cadastro-oficina')
         ->assertJsonPath('data.normalized_payload.task_refs.0', 'DRIE-21919');
+
+    $this->postJson('/api/v1/github-webhooks', githubNativeCheckSuitePayload(), [
+        'X-Integration-Token' => $token,
+        'X-GitHub-Delivery' => 'check-suite-delivery-1',
+        'X-GitHub-Event' => 'check_suite',
+    ])->assertOk()
+        ->assertJsonPath('data.event_type', 'check_suite.completed')
+        ->assertJsonPath('data.payload.check_suite.conclusion', 'success')
+        ->assertJsonPath('data.normalized_payload.check_suite_head_branch', 'feature/DRIE-21919-cadastro-oficina');
+
+    $this->postJson('/api/v1/github-webhooks', githubNativeWorkflowRunPayload(), [
+        'X-Integration-Token' => $token,
+        'X-GitHub-Delivery' => 'workflow-run-delivery-1',
+        'X-GitHub-Event' => 'workflow_run',
+    ])->assertOk()
+        ->assertJsonPath('data.event_type', 'workflow_run.completed')
+        ->assertJsonPath('data.payload.workflow_run.name', 'CI')
+        ->assertJsonPath('data.normalized_payload.workflow_run_conclusion', 'failure');
+
+    $this->postJson('/api/v1/github-webhooks', githubNativeDeploymentStatusPayload(), [
+        'X-Integration-Token' => $token,
+        'X-GitHub-Delivery' => 'deployment-status-delivery-1',
+        'X-GitHub-Event' => 'deployment_status',
+    ])->assertOk()
+        ->assertJsonPath('data.event_type', 'deployment_status.created')
+        ->assertJsonPath('data.payload.deployment.environment', 'production')
+        ->assertJsonPath('data.normalized_payload.deployment_status_state', 'failure');
 
     expect(PersonDeliveryMetric::query()->count())->toBe(0);
 });
@@ -674,6 +756,96 @@ function githubNativeCheckRunPayload(array $overrides = []): array
                     'number' => 42,
                 ],
             ],
+        ],
+    ], $overrides);
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function githubNativeCheckSuitePayload(array $overrides = []): array
+{
+    return array_replace_recursive([
+        'action' => 'completed',
+        'repository' => [
+            'id' => 1001,
+            'full_name' => '4techlead/api',
+        ],
+        'sender' => [
+            'login' => 'github-actions[bot]',
+        ],
+        'check_suite' => [
+            'id' => 8001,
+            'status' => 'completed',
+            'conclusion' => 'success',
+            'head_branch' => 'feature/DRIE-21919-cadastro-oficina',
+            'head_sha' => 'abc123',
+            'pull_requests' => [
+                [
+                    'number' => 42,
+                ],
+            ],
+        ],
+    ], $overrides);
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function githubNativeWorkflowRunPayload(array $overrides = []): array
+{
+    return array_replace_recursive([
+        'action' => 'completed',
+        'repository' => [
+            'id' => 1001,
+            'full_name' => '4techlead/api',
+        ],
+        'sender' => [
+            'login' => 'github-actions[bot]',
+        ],
+        'workflow_run' => [
+            'id' => 9001,
+            'name' => 'CI',
+            'status' => 'completed',
+            'conclusion' => 'failure',
+            'run_started_at' => '2026-08-27T10:10:00Z',
+            'updated_at' => '2026-08-27T10:15:00Z',
+            'head_branch' => 'feature/DRIE-21919-cadastro-oficina',
+            'head_sha' => 'abc123',
+            'pull_requests' => [
+                [
+                    'number' => 42,
+                ],
+            ],
+        ],
+    ], $overrides);
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function githubNativeDeploymentStatusPayload(array $overrides = []): array
+{
+    return array_replace_recursive([
+        'action' => 'created',
+        'repository' => [
+            'id' => 1001,
+            'full_name' => '4techlead/api',
+        ],
+        'sender' => [
+            'login' => 'github-actions[bot]',
+        ],
+        'deployment' => [
+            'id' => 3001,
+            'environment' => 'production',
+            'ref' => 'feature/DRIE-21919-cadastro-oficina',
+            'sha' => 'abc123',
+        ],
+        'deployment_status' => [
+            'id' => 3002,
+            'state' => 'failure',
+            'created_at' => '2026-08-27T10:16:00Z',
+            'updated_at' => '2026-08-27T10:16:30Z',
         ],
     ], $overrides);
 }

@@ -18,6 +18,8 @@ function validPersonPayload(int $teamId, array $overrides = []): array
         'seniority' => 'senior',
         'email' => 'ada@example.com',
         'phone' => '+55 11 99999-0000',
+        'github_username' => 'ada-lovelace',
+        'clickup_user_id' => '230504877',
     ], $overrides);
 }
 
@@ -119,7 +121,33 @@ it('creates a person linked to an existing team', function () {
         ->assertJsonPath('data.name', 'Ada Lovelace')
         ->assertJsonPath('data.team_id', $team->id)
         ->assertJsonPath('data.contract_type', 'clt')
-        ->assertJsonPath('data.seniority', 'senior');
+        ->assertJsonPath('data.seniority', 'senior')
+        ->assertJsonPath('data.github_username', 'ada-lovelace')
+        ->assertJsonPath('data.clickup_user_id', '230504877');
+});
+
+it('normalizes the github username when creating a person', function () {
+    $team = Team::factory()->create();
+
+    $this->actingAs(User::factory()->create(), 'sanctum')
+        ->postJson('/api/v1/people', validPersonPayload($team->id, [
+            'github_username' => '@Ada-Lovelace',
+        ]))
+        ->assertCreated()
+        ->assertJsonPath('data.github_username', 'ada-lovelace');
+});
+
+it('rejects duplicate provider ids in the same tenant', function () {
+    $team = Team::factory()->create();
+    Person::factory()->create([
+        'github_username' => 'ada-lovelace',
+        'clickup_user_id' => '230504877',
+    ]);
+
+    $this->actingAs(User::factory()->create(), 'sanctum')
+        ->postJson('/api/v1/people', validPersonPayload($team->id))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['github_username', 'clickup_user_id']);
 });
 
 it('creates a person without birth_date or admission_date', function () {

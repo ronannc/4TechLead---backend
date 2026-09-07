@@ -24,6 +24,8 @@ class IntegrationWebhookEventResource extends JsonResource
             'status' => $this->status,
             'failure_reason' => $this->failure_reason,
             'payload' => $this->payload,
+            'payload_hash' => $this->payload_hash,
+            'payload_size_bytes' => $this->payload_size_bytes,
             'normalized_payload' => $this->normalized_payload,
             'received_at' => $this->received_at,
             'created_at' => $this->created_at,

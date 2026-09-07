@@ -468,8 +468,8 @@
                 "tags": [
                     "Webhooks"
                 ],
-                "summary": "Receive a raw ClickUp webhook event",
-                "description": "Public endpoint dedicated to ClickUp. Authenticate with `Authorization: Bearer <webhook_token>`, `X-Integration-Token: <webhook_token>`, or `?token=<webhook_token>`. The ClickUp integration is resolved from the token. The raw body is stored and key ClickUp fields are extracted into `normalized_payload`; this endpoint does not generate delivery metrics yet.",
+                "summary": "Receive a ClickUp webhook event",
+                "description": "Public endpoint dedicated to ClickUp. Authenticate with `Authorization: Bearer <webhook_token>`, `X-Integration-Token: <webhook_token>`, or `?token=<webhook_token>`. The ClickUp integration is resolved from the token. Only a processed payload is stored; the raw body is represented by `payload_hash` and `payload_size_bytes` for audit/debug. Key ClickUp fields are extracted into `normalized_payload`; this endpoint does not generate delivery metrics yet.",
                 "security": [
                     {
                         "webhookBearer": []
@@ -617,8 +617,8 @@
                 "tags": [
                     "Webhooks"
                 ],
-                "summary": "Receive a raw GitHub webhook event",
-                "description": "Public endpoint dedicated to GitHub operational lake ingestion. Preferred authentication is GitHub's `X-Hub-Signature-256` HMAC-SHA256 signature, configured from the GitHub webhook Secret. The integration is resolved by matching the signature against active GitHub integration secrets. Legacy clients may still send `Authorization: Bearer <webhook_token>`, `X-Integration-Token: <webhook_token>`, or `?token=<webhook_token>`. The raw body is stored and key GitHub fields are extracted into `normalized_payload`; this endpoint does not generate delivery metrics yet.",
+                "summary": "Receive a GitHub webhook event",
+                "description": "Public endpoint dedicated to GitHub operational lake ingestion. Preferred authentication is GitHub's `X-Hub-Signature-256` HMAC-SHA256 signature, configured from the GitHub webhook Secret. The integration is resolved by matching the signature against active GitHub integration secrets. Legacy clients may still send `Authorization: Bearer <webhook_token>`, `X-Integration-Token: <webhook_token>`, or `?token=<webhook_token>`. Only a processed payload is stored; the raw body is represented by `payload_hash` and `payload_size_bytes` for audit/debug. GitHub events mapped for KPI analysis include pull requests, pull request reviews, check runs, check suites, workflow runs, and deployment statuses.",
                 "security": [
                     {
                         "webhookBearer": []
@@ -2019,7 +2019,22 @@
                     },
                     "payload": {
                         "type": "object",
-                        "additionalProperties": true
+                        "additionalProperties": true,
+                        "description": "Processed provider payload with only fields relevant to delivery analysis. The original raw webhook body is not stored."
+                    },
+                    "payload_hash": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "SHA-256 hash of the original raw webhook body."
+                    },
+                    "payload_size_bytes": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "Size of the original raw webhook body."
                     },
                     "normalized_payload": {
                         "$ref": "#/components/schemas/NormalizedWebhookPayload"
@@ -2166,12 +2181,18 @@
                         "type": "integer"
                     },
                     "review_acceptance_rate": {
-                        "type": "number",
+                        "type": [
+                            "number",
+                            "null"
+                        ],
                         "minimum": 0,
                         "maximum": 100
                     },
                     "ci_success_rate": {
-                        "type": "number",
+                        "type": [
+                            "number",
+                            "null"
+                        ],
                         "minimum": 0,
                         "maximum": 100
                     },
@@ -2184,6 +2205,60 @@
                     "pr_open_time_hours": {
                         "type": [
                             "number",
+                            "null"
+                        ]
+                    },
+                    "check_run_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "check_run_status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "check_run_conclusion": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "check_suite_status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "check_suite_conclusion": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "workflow_run_status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "workflow_run_conclusion": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "deployment_environment": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "deployment_status_state": {
+                        "type": [
+                            "string",
                             "null"
                         ]
                     }

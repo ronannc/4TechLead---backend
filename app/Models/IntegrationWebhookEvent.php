@@ -21,6 +21,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'status',
     'failure_reason',
     'payload',
+    'payload_hash',
+    'payload_size_bytes',
     'normalized_payload',
     'received_at',
 ])]
@@ -60,6 +62,7 @@ class IntegrationWebhookEvent extends Model
     {
         return [
             'payload' => 'array',
+            'payload_size_bytes' => 'integer',
             'normalized_payload' => 'array',
             'received_at' => 'datetime',
         ];
