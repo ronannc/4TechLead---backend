@@ -17,6 +17,7 @@ final class ClickUpWebhookController extends Controller
         $event = $service->ingest(
             $this->integrationToken($request),
             $request->all(),
+            $request->getContent(),
         );
 
         return (new IntegrationWebhookEventResource($event))

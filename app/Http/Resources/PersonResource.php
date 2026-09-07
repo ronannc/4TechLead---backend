@@ -25,6 +25,8 @@ class PersonResource extends JsonResource
             'contract_type' => $this->contract_type,
             'email' => $this->email,
             'phone' => $this->phone,
+            'github_username' => $this->github_username,
+            'clickup_user_id' => $this->clickup_user_id,
             'admission_date' => $this->admission_date?->toDateString(),
             'seniority' => $this->seniority,
             'daily_stats_summary' => $this->when(

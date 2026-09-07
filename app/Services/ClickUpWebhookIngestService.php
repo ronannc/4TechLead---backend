@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\IntegrationSystem;
 use App\Models\IntegrationWebhookEvent;
+use App\Models\Person;
 use App\Models\PersonExternalIdentity;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -19,11 +20,11 @@ final class ClickUpWebhookIngestService
      *
      * @throws Throwable
      */
-    public function ingest(string $token, array $payload): IntegrationWebhookEvent
+    public function ingest(string $token, array $payload, string $rawBody): IntegrationWebhookEvent
     {
         $integrationSystem = $this->integrationSystem($token);
 
-        return $this->ingestForIntegration($integrationSystem, $token, $payload);
+        return $this->ingestForIntegration($integrationSystem, $token, $payload, $rawBody);
     }
 
     /**
@@ -31,13 +32,13 @@ final class ClickUpWebhookIngestService
      *
      * @throws Throwable
      */
-    public function ingestForIntegration(IntegrationSystem $integrationSystem, string $token, array $payload): IntegrationWebhookEvent
+    public function ingestForIntegration(IntegrationSystem $integrationSystem, string $token, array $payload, string $rawBody): IntegrationWebhookEvent
     {
         $this->assertCanReceive($integrationSystem, $token);
 
-        return DB::transaction(function () use ($integrationSystem, $payload): IntegrationWebhookEvent {
+        return DB::transaction(function () use ($integrationSystem, $payload, $rawBody): IntegrationWebhookEvent {
             $normalizedPayload = $this->normalize($payload);
-            $identity = $this->identityFor($integrationSystem, $normalizedPayload['external_actor_code']);
+            $personId = $this->personIdFor($integrationSystem, $normalizedPayload['external_actor_code']);
 
             $event = IntegrationWebhookEvent::query()->createOrFirst(
                 [
@@ -46,12 +47,14 @@ final class ClickUpWebhookIngestService
                 ],
                 [
                     'tenant_id' => $integrationSystem->tenant_id,
-                    'person_id' => $identity?->person_id,
+                    'person_id' => $personId,
                     'event_type' => $normalizedPayload['event_type'],
                     'external_actor_code' => $normalizedPayload['external_actor_code'],
-                    'status' => $identity === null ? 'unmapped_person' : 'processed',
-                    'failure_reason' => $identity === null ? 'No active person mapping for external code.' : null,
-                    'payload' => $payload,
+                    'status' => $personId === null ? 'unmapped_person' : 'processed',
+                    'failure_reason' => $personId === null ? 'No active person mapping for external code.' : null,
+                    'payload' => $this->processedPayload($normalizedPayload),
+                    'payload_hash' => hash('sha256', $rawBody),
+                    'payload_size_bytes' => strlen($rawBody),
                     'normalized_payload' => $normalizedPayload,
                     'received_at' => now(),
                 ],
@@ -123,7 +126,6 @@ final class ClickUpWebhookIngestService
             'task_id' => $taskId,
             'task_custom_id' => $customId,
             'task_name' => Arr::get($task, 'name'),
-            'task_text_content' => Arr::get($task, 'text_content'),
             'task_status' => Arr::get($task, 'status.status', Arr::get($task, 'status')),
             'task_status_id' => Arr::get($task, 'status_id'),
             'task_sprint_points' => Arr::get($task, 'sprint_points'),
@@ -205,6 +207,30 @@ final class ClickUpWebhookIngestService
         return $userId === null ? null : 'clickup_user:'.$userId;
     }
 
+    protected function personIdFor(IntegrationSystem $integrationSystem, mixed $externalCode): ?int
+    {
+        $identity = $this->identityFor($integrationSystem, $externalCode);
+
+        if ($identity !== null) {
+            return $identity->person_id;
+        }
+
+        if (! is_string($externalCode) || ! str_starts_with($externalCode, 'clickup_user:')) {
+            return null;
+        }
+
+        $clickUpUserId = substr($externalCode, strlen('clickup_user:'));
+
+        if ($clickUpUserId === '') {
+            return null;
+        }
+
+        return Person::query()
+            ->where('tenant_id', $integrationSystem->tenant_id)
+            ->where('clickup_user_id', $clickUpUserId)
+            ->value('id');
+    }
+
     protected function identityFor(IntegrationSystem $integrationSystem, mixed $externalCode): ?PersonExternalIdentity
     {
         if (! is_string($externalCode) || $externalCode === '') {
@@ -216,6 +242,44 @@ final class ClickUpWebhookIngestService
             ->where('external_code', $externalCode)
             ->where('active', true)
             ->first();
+    }
+
+    /**
+     * @param  array<string, mixed>  $normalizedPayload
+     * @return array<string, mixed>
+     */
+    protected function processedPayload(array $normalizedPayload): array
+    {
+        return array_filter([
+            'source' => $normalizedPayload['source'],
+            'event_id' => $normalizedPayload['event_id'],
+            'event_type' => $normalizedPayload['event_type'],
+            'occurred_at' => $normalizedPayload['occurred_at'],
+            'workspace_id' => $normalizedPayload['workspace_id'],
+            'task' => array_filter([
+                'id' => $normalizedPayload['task_id'],
+                'custom_id' => $normalizedPayload['task_custom_id'],
+                'name' => $normalizedPayload['task_name'],
+                'status' => $normalizedPayload['task_status'],
+                'status_id' => $normalizedPayload['task_status_id'],
+                'sprint_points' => $normalizedPayload['task_sprint_points'],
+                'url' => $normalizedPayload['task_url'],
+            ], fn (mixed $value): bool => $value !== null && $value !== ''),
+            'change' => array_filter([
+                'history_item_id' => $normalizedPayload['history_item_id'],
+                'field' => $normalizedPayload['history_field'],
+                'before' => $normalizedPayload['history_before'],
+                'after' => $normalizedPayload['history_after'],
+            ], fn (mixed $value): bool => $value !== null && $value !== ''),
+            'actor' => array_filter([
+                'external_code' => $normalizedPayload['external_actor_code'],
+                'id' => $normalizedPayload['user_id'],
+                'name' => $normalizedPayload['user_name'],
+            ], fn (mixed $value): bool => $value !== null && $value !== ''),
+            'list_ids' => $normalizedPayload['list_ids'],
+            'task_refs' => $normalizedPayload['task_refs'],
+            'source_ref' => $normalizedPayload['source_ref'],
+        ], fn (mixed $value): bool => $value !== null && $value !== [] && $value !== '');
     }
 
     /**

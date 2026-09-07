@@ -23,6 +23,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'position',
     'contract_type',
     'email',
+    'phone',
+    'github_username',
+    'clickup_user_id',
     'admission_date',
     'seniority',
 ])]
@@ -103,6 +106,30 @@ class Person extends Model
     }
 
     /**
+     * @return Attribute<string|null, string|null>
+     */
+    protected function githubUsername(): Attribute
+    {
+        return Attribute::make(
+            set: fn (?string $value): ?string => $value === null || trim($value) === ''
+                ? null
+                : strtolower(ltrim(trim($value), '@')),
+        );
+    }
+
+    /**
+     * @return Attribute<string|null, string|null>
+     */
+    protected function clickupUserId(): Attribute
+    {
+        return Attribute::make(
+            set: fn (?string $value): ?string => $value === null || trim($value) === ''
+                ? null
+                : trim($value),
+        );
+    }
+
+    /**
      * @return array<int, string>
      */
     protected function filterableFields(): array
@@ -115,7 +142,7 @@ class Person extends Model
      */
     protected function searchableFields(): array
     {
-        return ['name', 'position', 'email'];
+        return ['name', 'position', 'email', 'github_username', 'clickup_user_id'];
     }
 
     /**

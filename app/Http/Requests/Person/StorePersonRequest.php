@@ -11,6 +11,15 @@ use Illuminate\Validation\Rule;
 
 class StorePersonRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('github_username')) {
+            $this->merge([
+                'github_username' => $this->normalizedGithubUsername($this->input('github_username')),
+            ]);
+        }
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -41,6 +50,26 @@ class StorePersonRequest extends FormRequest
             'seniority' => ['required', Rule::enum(SeniorityLevel::class)],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
+            'github_username' => [
+                'nullable',
+                'string',
+                'max:39',
+                'regex:/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/',
+                Rule::unique('people', 'github_username')
+                    ->where('tenant_id', auth()->user()?->tenant_id),
+            ],
+            'clickup_user_id' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('people', 'clickup_user_id')
+                    ->where('tenant_id', auth()->user()?->tenant_id),
+            ],
         ];
+    }
+
+    protected function normalizedGithubUsername(mixed $value): mixed
+    {
+        return is_string($value) ? ltrim(trim($value), '@') : $value;
     }
 }
