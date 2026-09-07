@@ -87,6 +87,7 @@ final class GitHubWebhookIngestService
 
             if ($event->wasRecentlyCreated) {
                 $integrationSystem->forceFill(['last_received_at' => now()])->save();
+                app(DeliveryMetricIngestService::class)->ingest($event);
             }
 
             return $event->refresh();
@@ -212,8 +213,8 @@ final class GitHubWebhookIngestService
             'source_ref' => Arr::get($payload, 'repository.full_name') === null || $this->pullRequestNumber($payload) === null
                 ? null
                 : Arr::get($payload, 'repository.full_name').'#'.$this->pullRequestNumber($payload),
-            'head_ref' => Arr::get($pullRequest, 'head.ref', Arr::get($checkRun, 'head_branch', Arr::get($workflowRun, 'head_branch'))),
-            'head_sha' => Arr::get($pullRequest, 'head.sha', Arr::get($checkRun, 'head_sha', Arr::get($workflowRun, 'head_sha'))),
+            'head_ref' => Arr::get($pullRequest, 'head.ref', Arr::get($checkRun, 'head_branch', Arr::get($workflowRun, 'head_branch', Arr::get($deployment, 'ref')))),
+            'head_sha' => Arr::get($pullRequest, 'head.sha', Arr::get($checkRun, 'head_sha', Arr::get($workflowRun, 'head_sha', Arr::get($deployment, 'sha')))),
             'base_ref' => Arr::get($pullRequest, 'base.ref'),
             'created_at' => $this->timestamp(Arr::get($pullRequest, 'created_at')),
             'updated_at' => $this->timestamp(Arr::get($pullRequest, 'updated_at')),
@@ -350,13 +351,52 @@ final class GitHubWebhookIngestService
         $githubUsername = substr($externalCode, strlen('github_user:'));
 
         if ($githubUsername === '') {
-            return null;
+            return $this->relatedPullRequestPersonId($integrationSystem, $normalizedPayload);
         }
 
-        return Person::query()
+        $personId = Person::query()
             ->where('tenant_id', $integrationSystem->tenant_id)
             ->where('github_username', strtolower($githubUsername))
             ->value('id');
+
+        return $personId ?? $this->relatedPullRequestPersonId($integrationSystem, $normalizedPayload);
+    }
+
+    /**
+     * @param  array<string, mixed>  $normalizedPayload
+     */
+    protected function relatedPullRequestPersonId(
+        IntegrationSystem $integrationSystem,
+        array $normalizedPayload,
+    ): ?int {
+        $headSha = $normalizedPayload['head_sha'] ?? null;
+        $taskRefs = array_values(array_filter((array) ($normalizedPayload['task_refs'] ?? [])));
+
+        if ($headSha === null && $taskRefs === []) {
+            return null;
+        }
+
+        $pullRequests = IntegrationWebhookEvent::query()
+            ->where('integration_system_id', $integrationSystem->id)
+            ->where('event_type', 'like', 'pull_request.%')
+            ->whereNotNull('person_id')
+            ->latest('received_at')
+            ->get();
+
+        foreach ($pullRequests as $pullRequest) {
+            $candidate = $pullRequest->normalized_payload ?? [];
+            $sameSha = $headSha !== null && ($candidate['head_sha'] ?? null) === $headSha;
+            $sameTask = array_intersect(
+                $taskRefs,
+                array_values(array_filter((array) ($candidate['task_refs'] ?? []))),
+            ) !== [];
+
+            if ($sameSha || $sameTask) {
+                return $pullRequest->person_id;
+            }
+        }
+
+        return null;
     }
 
     protected function identityFor(IntegrationSystem $integrationSystem, ?string $externalCode): ?PersonExternalIdentity

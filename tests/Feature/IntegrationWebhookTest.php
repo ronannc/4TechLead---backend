@@ -413,7 +413,7 @@ it('receives a signed github webhook through a url without a token or integratio
     expect(PersonDeliveryMetric::query()->count())->toBe(0);
 });
 
-it('stores a mapped merged github pull request webhook as lake data without generating delivery metrics', function (): void {
+it('stores a mapped merged github pull request webhook and generates delivery metrics', function (): void {
     $token = 'github-webhook-secret';
     $integration = IntegrationSystem::factory()->create([
         'provider' => 'github',
@@ -460,7 +460,80 @@ it('stores a mapped merged github pull request webhook as lake data without gene
         ->assertJsonPath('data.normalized_payload.changed_lines', 500)
         ->assertJsonPath('data.normalized_payload.pr_merge_time_hours', 32);
 
-    expect(PersonDeliveryMetric::query()->count())->toBe(0);
+    expect(PersonDeliveryMetric::query()->pluck('metric_type')->all())->toEqualCanonicalizing([
+        'pull_request_merged_count',
+        'code_quality_score',
+        'pull_request_open_time',
+        'pull_request_merge_time',
+        'pull_request_changed_files',
+        'pull_request_changed_lines',
+    ]);
+});
+
+it('crosses a completed clickup task with the related merged github pull request', function (): void {
+    $tenantId = IntegrationSystem::factory()->create()->tenant_id;
+    $clickUpToken = 'clickup-crossing-token';
+    $githubToken = 'github-crossing-token';
+    $clickUp = IntegrationSystem::factory()->create([
+        'tenant_id' => $tenantId,
+        'provider' => 'clickup',
+        'token_hash' => hash('sha256', $clickUpToken),
+        'token_prefix' => substr($clickUpToken, 0, 8),
+    ]);
+    $github = IntegrationSystem::factory()->create([
+        'tenant_id' => $tenantId,
+        'provider' => 'github',
+        'token_hash' => hash('sha256', $githubToken),
+        'webhook_secret' => $githubToken,
+        'token_prefix' => substr($githubToken, 0, 8),
+    ]);
+    $person = Person::factory()->create([
+        'tenant_id' => $tenantId,
+        'clickup_user_id' => '230504877',
+        'github_username' => 'lucas-github',
+    ]);
+
+    $this->postJson('/api/v1/clickup-webhooks', clickUpAutomationPayload([
+        'event' => 'taskStatusUpdated',
+        'date' => '2026-08-27T10:00:00Z',
+        'history_items' => [[
+            'id' => 'history-completed-1',
+            'date' => '2026-08-27T10:00:00Z',
+            'field' => 'status',
+            'before' => 'teste de qualidade',
+            'after' => 'done',
+            'user' => ['id' => 230504877, 'username' => 'Ronan'],
+        ]],
+    ]), [
+        'X-Integration-Token' => $clickUpToken,
+    ])->assertOk();
+
+    $this->postJson('/api/v1/github-webhooks', githubNativePullRequestPayload([
+        'action' => 'closed',
+        'pull_request' => [
+            'state' => 'closed',
+            'merged' => true,
+            'closed_at' => '2026-08-28T18:00:00Z',
+            'merged_at' => '2026-08-28T18:00:00Z',
+        ],
+    ]), [
+        'Authorization' => "Bearer {$githubToken}",
+        'X-GitHub-Delivery' => 'crossing-delivery-1',
+        'X-GitHub-Event' => 'pull_request',
+    ])->assertOk();
+
+    $githubEvent = $github->webhookEvents()->firstOrFail();
+
+    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)
+        ->where('integration_webhook_event_id', $githubEvent->id)
+        ->pluck('metric_type')->all())->toContain(
+            'task_pull_request_link_count',
+            'task_to_pull_request_hours',
+        );
+    expect(PersonDeliveryMetric::query()
+        ->where('integration_webhook_event_id', $githubEvent->id)
+        ->where('metric_type', 'task_to_pull_request_hours')
+        ->value('metric_value'))->toBe('32.00');
 });
 
 it('rejects github webhook urls without a token when the signature is missing', function (): void {

@@ -62,6 +62,7 @@ final class ClickUpWebhookIngestService
 
             if ($event->wasRecentlyCreated) {
                 $integrationSystem->forceFill(['last_received_at' => now()])->save();
+                app(DeliveryMetricIngestService::class)->ingest($event);
             }
 
             return $event->refresh();
