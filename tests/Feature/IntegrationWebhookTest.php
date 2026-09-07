@@ -182,7 +182,7 @@ it('receives a clickup automation webhook and stores the raw payload without gen
     expect(PersonDeliveryMetric::query()->count())->toBe(0);
 });
 
-it('creates delivery metrics from a mapped clickup webhook', function (): void {
+it('stores a mapped clickup webhook as lake data without generating delivery metrics', function (): void {
     $token = 'clickup-automation-token';
     $integration = IntegrationSystem::factory()->create([
         'provider' => 'clickup',
@@ -202,25 +202,7 @@ it('creates delivery metrics from a mapped clickup webhook', function (): void {
         ->assertJsonPath('data.person_id', $person->id)
         ->assertJsonPath('data.status', 'processed');
 
-    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(4);
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'task_delivery_count')
-            ->value('metric_value'),
-    )->toBe('1.00');
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'delivery_points')
-            ->value('metric_value'),
-    )->toBe('5.00');
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'annual_task_delivery_count')
-            ->value('metric_value'),
-    )->toBe('1.00');
+    expect(PersonDeliveryMetric::query()->count())->toBe(0);
 });
 
 it('does not duplicate clickup webhook events with the same trigger id', function (): void {
@@ -376,7 +358,7 @@ it('receives a signed github webhook through a url without a token or integratio
     expect(PersonDeliveryMetric::query()->count())->toBe(0);
 });
 
-it('creates delivery metrics from a mapped merged github pull request webhook', function (): void {
+it('stores a mapped merged github pull request webhook as lake data without generating delivery metrics', function (): void {
     $token = 'github-webhook-secret';
     $integration = IntegrationSystem::factory()->create([
         'provider' => 'github',
@@ -423,25 +405,7 @@ it('creates delivery metrics from a mapped merged github pull request webhook', 
         ->assertJsonPath('data.normalized_payload.changed_lines', 500)
         ->assertJsonPath('data.normalized_payload.pr_merge_time_hours', 32);
 
-    expect(PersonDeliveryMetric::query()->where('person_id', $person->id)->count())->toBe(20);
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'pull_request_count')
-            ->value('metric_value'),
-    )->toBe('1.00');
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'changed_lines_count')
-            ->value('metric_value'),
-    )->toBe('500.00');
-    expect(
-        PersonDeliveryMetric::query()
-            ->where('person_id', $person->id)
-            ->where('metric_type', 'annual_pr_merge_time_average')
-            ->value('metric_value'),
-    )->toBe('32.00');
+    expect(PersonDeliveryMetric::query()->count())->toBe(0);
 });
 
 it('rejects github webhook urls without a token when the signature is missing', function (): void {

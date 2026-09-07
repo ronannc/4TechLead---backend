@@ -14,8 +14,6 @@ use Throwable;
 
 final class GitHubWebhookIngestService
 {
-    public function __construct(private readonly DeliveryMetricIngestService $metricIngestService) {}
-
     /**
      * @param  array<string, mixed>  $payload
      * @param  array<string, mixed>  $headers
@@ -85,10 +83,6 @@ final class GitHubWebhookIngestService
 
             if ($event->wasRecentlyCreated) {
                 $integrationSystem->forceFill(['last_received_at' => now()])->save();
-
-                if ($identity !== null && $this->shouldCreatePullRequestMetrics($normalizedPayload)) {
-                    $this->metricIngestService->createPullRequestMetrics($event, $normalizedPayload);
-                }
             }
 
             return $event->refresh();
@@ -313,15 +307,6 @@ final class GitHubWebhookIngestService
             ->where('external_code', $externalCode)
             ->where('active', true)
             ->first();
-    }
-
-    /**
-     * @param  array<string, mixed>  $normalizedPayload
-     */
-    protected function shouldCreatePullRequestMetrics(array $normalizedPayload): bool
-    {
-        return $normalizedPayload['event_type'] === 'pull_request.closed'
-            && $normalizedPayload['pr_merged'] === true;
     }
 
     /**

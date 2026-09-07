@@ -14,8 +14,6 @@ use Throwable;
 
 final class ClickUpWebhookIngestService
 {
-    public function __construct(private readonly DeliveryMetricIngestService $metricIngestService) {}
-
     /**
      * @param  array<string, mixed>  $payload
      *
@@ -61,10 +59,6 @@ final class ClickUpWebhookIngestService
 
             if ($event->wasRecentlyCreated) {
                 $integrationSystem->forceFill(['last_received_at' => now()])->save();
-
-                if ($identity !== null) {
-                    $this->metricIngestService->createClickUpTaskMetrics($event, $normalizedPayload);
-                }
             }
 
             return $event->refresh();
