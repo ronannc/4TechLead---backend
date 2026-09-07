@@ -1,16 +1,16 @@
 # Graph Report - backend  (2026-09-07)
 
 ## Corpus Check
-- 317 files · ~73,658 words
+- 318 files · ~74,623 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1169 nodes · 2455 edges · 123 communities (78 shown, 45 thin omitted)
+- 1182 nodes · 2494 edges · 127 communities (83 shown, 44 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 68 edges (avg confidence: 0.86)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `2604c2c0`
+- Built from commit: `d0ac2eea`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -26,94 +26,98 @@
 - Laravel Best Practices
 - TenantRule
 - PersonOneOnOneNote
-- PersonExternalIdentity
+- User
 - CrudControllerTrait.php
 - Illuminate\Database\Eloquent\Factories\Factory
 - Illuminate\Http\JsonResponse
 - devDependencies
-- Person.php
-- Illuminate\Database\Eloquent\Relations\HasMany
-- Illuminate\Database\Eloquent\Model
+- Illuminate\Contracts\Validation\ValidationRule
+- ExternalNotificationTest.php
+- PersonExternalIdentity
 - Generic CRUD Architecture
-- IntegrationWebhookTest.php
+- Illuminate\Database\Eloquent\Relations\HasMany
 - IntegrationSystem
-- Illuminate\Database\Eloquent\Casts\Attribute
+- UserFactory
 - TestCase
 - Person
 - DevelopmentPlanItem
-- PersonDeliveryMetric
+- Illuminate\Database\Eloquent\Relations\BelongsTo
 - DevelopmentPlan
-- DailyMeeting
+- DailyMeetingPolicy
 - Illuminate\Foundation\Http\FormRequest
-- AcceptPersonInvitationRequest
-- User
+- StoreOneOnOneTemplateRequest
+- IntegrationWebhookEvent
 - ListParams
-- GitHubWebhookIngestService
+- PersonInvitation
 - ExternalNotification
 - OneOnOneSession
 - OneOnOneTemplate
-- ClickUpWebhookIngestService
+- StoreDevelopmentPlanRequest
 - UpdateDevelopmentPlanRequest.php
 - Illuminate\Database\Schema\Blueprint
-- ClickUpWebhookController.php
+- GitHubWebhookController
 - TenantIsolationTest.php
-- DevelopmentPlan.php
+- ClickUpWebhookIngestService
 - AppServiceProvider
-- UpdateTeamRequest
+- Illuminate\Database\Eloquent\Model
 - Laravel Cloud Production Deployment
-- DailyMeetingAnnotation
-- Illuminate\Database\Eloquent\Relations\BelongsTo
+- DailyMeeting
+- IndexIntegrationSystemRequest
 - logging.php
-- TeamController.php
+- UpdateOneOnOneSessionRequest
 - DatabaseSeeder.php
 - StorePersonRequest
 - require-dev
 - setup
-- IndexDailyMeetingEntryRequest
-- IndexDevelopmentPlanRequest
+- StorePersonOneOnOneNoteRequest
+- TeamController.php
 - config
-- PersonInvitationController.php
-- Illuminate\Contracts\Validation\ValidationRule
+- PersonPolicy
+- StoreOneOnOneSessionRequest
 - require
 - psr-4
 - Illuminate\Database\Migrations\Migration
-- StoreDevelopmentPlanItemRequest
 - IntegrationSystemController.php
-- IndexDailyMeetingRequest
-- StoreExternalNotificationWebhookRequest
+- AcceptPersonInvitationRequest
+- UpdatePersonRequest
+- LoginRequest
 - laravel-boost
 - IndexPersonOneOnOneNoteRequest
 - IndexDevelopmentPlanItemRequest
+- AuthenticatedPersonController.php
 - IndexOneOnOneSessionRequest
-- IndexOneOnOneTemplateRequest
 - Filterable.php
 - IndexPersonDeliveryMetricRequest
-- UpdateIntegrationSystemRequest
-- LogoutService.php
+- UpdateOneOnOneTemplateRequest
+- StorePersonInvitationRequest
 - post-create-project-cmd
 - Illuminate\Support\Facades\Schema
-- extra
-- IndexPersonExternalIdentityRequest
 - UpdatePersonOneOnOneNoteRequest
+- IndexPersonExternalIdentityRequest
+- UpdateTeamRequest
 - console.php
 - laravel-boost
 - Application
 - docker-entrypoint.sh
 - Symfony\Component\HttpFoundation\BinaryFileResponse
 - Validation and Form Requests Best Practices
-- ExternalNotificationController.php
+- User.php
+- LogoutService.php
+- StoreDailyMeetingRequest
+- StorePersonExternalIdentityRequest
+- extra
 
 ## God Nodes (most connected - your core abstractions)
 1. `User` - 156 edges
 2. `Person` - 73 edges
-3. `IntegrationSystem` - 57 edges
+3. `IntegrationSystem` - 58 edges
 4. `TenantRule` - 46 edges
 5. `Controller` - 42 edges
 6. `Team` - 35 edges
-7. `DailyMeeting` - 30 edges
-8. `DailyMeetingEntry` - 29 edges
-9. `PersonExternalIdentity` - 27 edges
-10. `DevelopmentPlan` - 26 edges
+7. `IntegrationWebhookEvent` - 34 edges
+8. `DailyMeeting` - 30 edges
+9. `DailyMeetingEntry` - 29 edges
+10. `PersonExternalIdentity` - 27 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Generic CRUD Architecture` --semantically_similar_to--> `Generic CRUD Architecture`  [INFERRED] [semantically similar]
@@ -140,27 +144,27 @@
 - **Laravel Data Access Quality Rules** — backend__agents_skills_laravel_best_practices_rules_advanced_queries_advanced_query_patterns, backend__agents_skills_laravel_best_practices_rules_db_performance_database_performance_best_practices, backend__agents_skills_laravel_best_practices_rules_eloquent_eloquent_best_practices, backend__agents_skills_laravel_best_practices_rules_migrations_migration_best_practices, backend__agents_skills_laravel_best_practices_rules_collections_collection_best_practices [INFERRED 0.85]
 - **Laravel Delivery Flow** — _github_skills_laravel_best_practices_rules_routing_routing_controllers_best_practices, _github_skills_laravel_best_practices_rules_architecture_architecture_best_practices, _github_skills_laravel_best_practices_rules_security_security_best_practices, _github_skills_laravel_best_practices_rules_error_handling_error_handling_best_practices [INFERRED 0.85]
 
-## Communities (123 total, 45 thin omitted)
+## Communities (127 total, 44 thin omitted)
 
 ### Community 0 - "Illuminate\Http\Request"
-Cohesion: 0.10
-Nodes (16): DailyMeetingAnnotationResource, DailyMeetingEntryResource, DailyMeetingResource, DevelopmentPlanItemResource, DevelopmentPlanResource, IntegrationSystemResource, OneOnOneSessionResource, OneOnOneTemplateResource (+8 more)
+Cohesion: 0.09
+Nodes (16): DailyMeetingAnnotationResource, DailyMeetingEntryResource, DailyMeetingResource, DevelopmentPlanItemResource, IntegrationWebhookEventResource, OneOnOneSessionResource, OneOnOneTemplateResource, PersonDeliveryMetricResource (+8 more)
 
 ### Community 1 - "DailyMeetingEntry"
-Cohesion: 0.15
-Nodes (4): DailyMeetingEntry, DailyMeetingEntryPolicy, PersonDailyStatsSummaryService, Carbon\Carbon
+Cohesion: 0.14
+Nodes (3): DailyMeetingEntry, Attribute, PersonDailyStatsSummaryService
 
 ### Community 2 - "composer.json"
 Cohesion: 0.14
 Nodes (13): autoload-dev, psr-4, description, keywords, license, minimum-stability, name, prefer-stable (+5 more)
 
 ### Community 3 - "Controller"
-Cohesion: 0.10
-Nodes (12): DailyMeetingController, DailyMeetingEntryController, DevelopmentPlanController, ExternalNotificationWebhookController, OneOnOneSessionController, OneOnOneTemplateController, PersonDeliveryMetricController, PersonExternalIdentityController (+4 more)
+Cohesion: 0.09
+Nodes (13): DailyMeetingController, DailyMeetingEntryController, DevelopmentPlanController, DevelopmentPlanItemController, ExternalNotificationWebhookController, OneOnOneSessionController, PersonDeliveryMetricController, PersonExternalIdentityController (+5 more)
 
 ### Community 4 - "Team"
-Cohesion: 0.11
-Nodes (4): Team, TeamPolicy, PersonFactory, TeamFactory
+Cohesion: 0.10
+Nodes (7): Team, TeamPolicy, Carbon\Carbon, DailyMeetingEntryFactory, static, DailyMeetingFactory, PersonFactory
 
 ### Community 5 - "scripts"
 Cohesion: 0.13
@@ -180,47 +184,47 @@ Nodes (21): Pest Testing 4, Advanced Query Patterns, Architecture Best Practices
 
 ### Community 9 - "TenantRule"
 Cohesion: 0.09
-Nodes (8): StoreDailyMeetingRequest, StoreDevelopmentPlanRequest, UpdateDevelopmentPlanItemRequest, IndexExternalNotificationRequest, UpdateOneOnOneSessionRequest, StorePersonOneOnOneNoteRequest, TenantRule, Illuminate\Validation\Rules\Exists
+Nodes (8): IndexDailyMeetingRequest, IndexDailyMeetingEntryRequest, IndexDevelopmentPlanRequest, StoreDevelopmentPlanItemRequest, UpdateDevelopmentPlanItemRequest, IndexExternalNotificationRequest, TenantRule, Illuminate\Validation\Rules\Exists
+
+### Community 11 - "User"
+Cohesion: 0.09
+Nodes (6): User, DailyMeetingEntryPolicy, PersonDeliveryMetricPolicy, PersonExternalIdentityPolicy, LoginService, Illuminate\Foundation\Auth\User
 
 ### Community 12 - "CrudControllerTrait.php"
-Cohesion: 0.25
-Nodes (13): DevelopmentPlanItemController, destroy(), findModel(), index(), resolveDeleteService(), resolveIndexService(), resolveStoreService(), resolveUpdateService() (+5 more)
+Cohesion: 0.29
+Nodes (11): OneOnOneTemplateController, destroy(), findModel(), index(), resolveDeleteService(), resolveIndexService(), resourceClass(), show() (+3 more)
 
 ### Community 13 - "Illuminate\Database\Eloquent\Factories\Factory"
-Cohesion: 0.07
-Nodes (14): DevelopmentPlanItemFactory, ExternalNotificationFactory, IntegrationSystemFactory, IntegrationWebhookEventFactory, OneOnOneSessionFactory, OneOnOneTemplateFactory, PersonDeliveryMetricFactory, PersonExternalIdentityFactory (+6 more)
+Cohesion: 0.11
+Nodes (9): DevelopmentPlanFactory, DevelopmentPlanItemFactory, IntegrationSystemFactory, OneOnOneTemplateFactory, PersonDeliveryMetricFactory, PersonOneOnOneNoteFactory, TeamFactory, TenantFactory (+1 more)
 
 ### Community 14 - "Illuminate\Http\JsonResponse"
-Cohesion: 0.14
-Nodes (7): InvalidCredentialsException, AuthController, AuthenticatedPersonController, PersonController, Exception, Illuminate\Http\JsonResponse, Symfony\Component\HttpKernel\Exception\NotFoundHttpException
+Cohesion: 0.13
+Nodes (7): InvalidCredentialsException, AuthController, ClickUpWebhookController, ExternalNotificationController, ExternalNotificationResource, Exception, Illuminate\Http\JsonResponse
 
 ### Community 15 - "devDependencies"
 Cohesion: 0.11
 Nodes (17): concurrently, laravel-vite-plugin, devDependencies, concurrently, laravel-vite-plugin, tailwindcss, @tailwindcss/vite, vite (+9 more)
 
-### Community 16 - "Person.php"
-Cohesion: 0.14
-Nodes (4): IndexPersonRequest, UpdatePersonRequest, StorePersonExternalIdentityRequest, Illuminate\Validation\Rule
+### Community 16 - "Illuminate\Contracts\Validation\ValidationRule"
+Cohesion: 0.19
+Nodes (4): StoreExternalNotificationWebhookRequest, IndexPersonRequest, Illuminate\Contracts\Validation\ValidationRule, Illuminate\Validation\Rule
 
-### Community 18 - "Illuminate\Database\Eloquent\Model"
+### Community 17 - "ExternalNotificationTest.php"
+Cohesion: 0.29
+Nodes (4): Illuminate\Cookie\Middleware\EncryptCookies, Illuminate\Foundation\Http\Middleware\ValidateCsrfToken, Laravel\Sanctum\Http\Middleware\AuthenticateSession, Laravel\Sanctum\Sanctum
+
+### Community 18 - "PersonExternalIdentity"
 Cohesion: 0.05
-Nodes (27): delete(), store(), update(), PersonInvitation, AcceptPersonInvitationService, DailyMeetingStoreService, GenericDeleteService, GenericStoreService (+19 more)
+Nodes (21): store(), resolveStoreService(), PersonExternalIdentity, GenericStoreService, OneOnOneSessionStoreService, PersonExternalIdentityStoreService, PersonOneOnOneNoteStoreService, Illuminate\Routing\Middleware\ThrottleRequests (+13 more)
 
 ### Community 19 - "Generic CRUD Architecture"
 Cohesion: 0.15
 Nodes (13): After Method Cross-Field Validation, Form Request Validation, Validated Data for Mass Assignment, Architecture Testing, Browser Testing, Pest PHP Testing, Daily Meeting Custom Store Service, Filterable Query Convention (+5 more)
 
-### Community 20 - "IntegrationWebhookTest.php"
-Cohesion: 0.12
-Nodes (8): Illuminate\Cookie\Middleware\EncryptCookies, Illuminate\Foundation\Http\Middleware\ValidateCsrfToken, Illuminate\Routing\Middleware\ThrottleRequests, Illuminate\Testing\Fluent\AssertableJson, Laravel\Sanctum\Http\Middleware\AuthenticateSession, Laravel\Sanctum\Sanctum, githubNativePullRequestPayload(), githubNativeReviewPayload()
-
 ### Community 21 - "IntegrationSystem"
-Cohesion: 0.15
-Nodes (3): IntegrationSystem, IntegrationSystemPolicy, ExternalNotificationIngestService
-
-### Community 22 - "Illuminate\Database\Eloquent\Casts\Attribute"
-Cohesion: 0.38
-Nodes (3): Attribute, Attribute, Illuminate\Database\Eloquent\Casts\Attribute
+Cohesion: 0.09
+Nodes (7): IntegrationSystem, IntegrationSystemPolicy, ExternalNotificationIngestService, IntegrationSystemStoreService, ExternalNotificationFactory, IntegrationWebhookEventFactory, PersonExternalIdentityFactory
 
 ### Community 23 - "TestCase"
 Cohesion: 0.15
@@ -228,47 +232,55 @@ Nodes (7): Illuminate\Foundation\Application, Illuminate\Foundation\Configuratio
 
 ### Community 24 - "Person"
 Cohesion: 0.13
-Nodes (4): PersonGrowthSuggestionController, Person, PersonPolicy, Illuminate\Database\Eloquent\Relations\HasOne
+Nodes (5): PersonGrowthSuggestionController, Person, Attribute, Illuminate\Database\Eloquent\Casts\Attribute, Illuminate\Database\Eloquent\Relations\HasOne
 
-### Community 28 - "DailyMeeting"
-Cohesion: 0.10
-Nodes (5): DailyMeeting, DailyMeetingPolicy, DailyMeetingEntryFactory, static, DailyMeetingFactory
+### Community 26 - "Illuminate\Database\Eloquent\Relations\BelongsTo"
+Cohesion: 0.20
+Nodes (4): PersonDeliveryMetric, Illuminate\Database\Eloquent\Attributes\Fillable, Illuminate\Database\Eloquent\Factories\HasFactory, Illuminate\Database\Eloquent\Relations\BelongsTo
 
 ### Community 29 - "Illuminate\Foundation\Http\FormRequest"
 Cohesion: 0.09
-Nodes (8): RegisterRequest, IndexIntegrationSystemRequest, StoreIntegrationSystemRequest, StoreOneOnOneTemplateRequest, UpdateOneOnOneTemplateRequest, IndexTeamRequest, StoreTeamRequest, Illuminate\Foundation\Http\FormRequest
+Nodes (8): RegisterRequest, StoreIntegrationSystemRequest, UpdateIntegrationSystemRequest, IndexOneOnOneTemplateRequest, UpdatePersonExternalIdentityRequest, IndexTeamRequest, StoreTeamRequest, Illuminate\Foundation\Http\FormRequest
 
-### Community 31 - "User"
-Cohesion: 0.12
-Nodes (8): IntegrationWebhookEvent, User, IntegrationWebhookEventPolicy, LoginService, Illuminate\Database\Eloquent\Attributes\Hidden, Illuminate\Foundation\Auth\User, Illuminate\Notifications\Notifiable, Laravel\Sanctum\HasApiTokens
+### Community 31 - "IntegrationWebhookEvent"
+Cohesion: 0.08
+Nodes (4): IntegrationWebhookEvent, IntegrationWebhookEventPolicy, DeliveryMetricIngestService, GitHubWebhookIngestService
 
 ### Community 32 - "ListParams"
 Cohesion: 0.25
 Nodes (6): index(), ListParams, GenericIndexService, OneOnOneSessionIndexService, Illuminate\Contracts\Pagination\LengthAwarePaginator, self
 
+### Community 33 - "PersonInvitation"
+Cohesion: 0.18
+Nodes (4): PersonInvitation, AcceptPersonInvitationService, PersonInvitationCreateService, PersonInvitationFactory
+
+### Community 36 - "OneOnOneTemplate"
+Cohesion: 0.16
+Nodes (3): OneOnOneTemplate, OneOnOneTemplatePolicy, OneOnOneSessionFactory
+
 ### Community 38 - "UpdateDevelopmentPlanRequest.php"
 Cohesion: 0.29
 Nodes (3): UpdateDevelopmentPlanRequest, Carbon\CarbonImmutable, Illuminate\Validation\Validator
-
-### Community 41 - "ClickUpWebhookController.php"
-Cohesion: 0.22
-Nodes (3): ClickUpWebhookController, GitHubWebhookController, IntegrationWebhookEventResource
 
 ### Community 42 - "TenantIsolationTest.php"
 Cohesion: 0.33
 Nodes (3): Tenant, RegisterUserService, tenantFixture()
 
+### Community 45 - "Illuminate\Database\Eloquent\Model"
+Cohesion: 0.29
+Nodes (6): delete(), update(), resolveUpdateService(), GenericDeleteService, GenericUpdateService, Illuminate\Database\Eloquent\Model
+
 ### Community 46 - "Laravel Cloud Production Deployment"
 Cohesion: 0.40
 Nodes (6): Local Backend Docker Stack, Laravel Cloud Production Deployment, Open Crawling Policy, Backend API Surface, Laravel Cloud Checklist, Scalar API Reference UI
 
+### Community 47 - "DailyMeeting"
+Cohesion: 0.12
+Nodes (4): DailyMeeting, DailyMeetingAnnotation, DailyMeetingStoreService, DailyMeetingAnnotationFactory
+
 ### Community 49 - "logging.php"
 Cohesion: 0.40
 Nodes (4): Monolog\Handler\NullHandler, Monolog\Handler\StreamHandler, Monolog\Handler\SyslogUdpHandler, Monolog\Processor\PsrLogMessageProcessor
-
-### Community 50 - "TeamController.php"
-Cohesion: 0.22
-Nodes (4): TeamController, PersonResource, UserResource, BackedEnum
 
 ### Community 51 - "DatabaseSeeder.php"
 Cohesion: 0.60
@@ -282,13 +294,13 @@ Nodes (10): require-dev, fakerphp/faker, laravel/boost, laravel/pail, laravel/pa
 Cohesion: 0.25
 Nodes (8): post-root-package-install, setup, composer install, npm install --ignore-scripts, npm run build, @php artisan key:generate, @php artisan migrate --force, @php -r \"file_exists('.env') || copy('.env.example', '.env');\
 
+### Community 56 - "TeamController.php"
+Cohesion: 0.22
+Nodes (3): PersonController, TeamController, PersonResource
+
 ### Community 57 - "config"
 Cohesion: 0.29
 Nodes (7): pestphp/pest-plugin, php-http/discovery, config, allow-plugins, optimize-autoloader, preferred-install, sort-packages
-
-### Community 60 - "Illuminate\Contracts\Validation\ValidationRule"
-Cohesion: 0.14
-Nodes (4): LoginRequest, StoreOneOnOneSessionRequest, UpdatePersonExternalIdentityRequest, Illuminate\Contracts\Validation\ValidationRule
 
 ### Community 63 - "require"
 Cohesion: 0.33
@@ -298,6 +310,14 @@ Nodes (6): require, laravel/framework, laravel/sanctum, laravel/tinker, league/f
 Cohesion: 0.40
 Nodes (5): autoload, psr-4, App\\, Database\\Factories\\, Database\\Seeders\\
 
+### Community 68 - "IntegrationSystemController.php"
+Cohesion: 0.29
+Nodes (4): IntegrationSystemController, IntegrationSystemResource, IntegrationSystemTokenService, Illuminate\Support\Facades\URL
+
+### Community 75 - "AuthenticatedPersonController.php"
+Cohesion: 0.33
+Nodes (3): AuthenticatedPersonController, DevelopmentPlanResource, Symfony\Component\HttpKernel\Exception\NotFoundHttpException
+
 ### Community 77 - "Filterable.php"
 Cohesion: 0.42
 Nodes (7): filterableFields(), scopeFilter(), scopeOrder(), scopeSearch(), searchableFields(), sortableFields(), Illuminate\Database\Eloquent\Builder
@@ -306,29 +326,33 @@ Nodes (7): filterableFields(), scopeFilter(), scopeOrder(), scopeSearch(), searc
 Cohesion: 0.50
 Nodes (4): post-create-project-cmd, @php artisan key:generate --ansi, @php artisan migrate --graceful --ansi, @php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\
 
-### Community 85 - "extra"
+### Community 116 - "User.php"
+Cohesion: 0.50
+Nodes (3): Illuminate\Database\Eloquent\Attributes\Hidden, Illuminate\Notifications\Notifiable, Laravel\Sanctum\HasApiTokens
+
+### Community 124 - "extra"
 Cohesion: 0.67
 Nodes (3): extra, laravel, dont-discover
 
 ## Knowledge Gaps
 - **80 isolated node(s):** `php`, `docker-entrypoint.sh script`, `php`, `$schema`, `name` (+75 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **45 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **44 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `User` connect `User` to `DailyMeetingEntry`, `Team`, `PersonOneOnOneNote`, `PersonExternalIdentity`, `Illuminate\Database\Eloquent\Factories\Factory`, `Illuminate\Database\Eloquent\Model`, `IntegrationWebhookTest.php`, `IntegrationSystem`, `Person`, `DevelopmentPlanItem`, `PersonDeliveryMetric`, `DevelopmentPlan`, `DailyMeeting`, `ExternalNotification`, `OneOnOneSession`, `OneOnOneTemplate`, `TenantIsolationTest.php`, `DailyMeetingAnnotation`, `Illuminate\Database\Eloquent\Relations\BelongsTo`, `DatabaseSeeder.php`, `LogoutService.php`?**
-  _High betweenness centrality (0.138) - this node is a cross-community bridge._
-- **Why does `Person` connect `Person` to `DailyMeetingEntry`, `Controller`, `Team`, `Illuminate\Database\Eloquent\Factories\Factory`, `Illuminate\Http\JsonResponse`, `Person.php`, `Illuminate\Database\Eloquent\Relations\HasMany`, `Illuminate\Database\Eloquent\Model`, `IntegrationWebhookTest.php`, `Illuminate\Database\Eloquent\Casts\Attribute`, `DevelopmentPlan`, `DailyMeeting`, `GitHubWebhookIngestService`, `ClickUpWebhookIngestService`, `TenantIsolationTest.php`, `DevelopmentPlan.php`, `DailyMeetingAnnotation`, `Illuminate\Database\Eloquent\Relations\BelongsTo`, `PersonInvitationController.php`, `Filterable.php`?**
-  _High betweenness centrality (0.088) - this node is a cross-community bridge._
-- **Why does `IntegrationSystem` connect `IntegrationSystem` to `GitHubWebhookIngestService`, `Controller`, `IntegrationSystemController.php`, `ClickUpWebhookIngestService`, `TenantIsolationTest.php`, `Illuminate\Database\Eloquent\Factories\Factory`, `Filterable.php`, `Illuminate\Database\Eloquent\Relations\HasMany`, `Illuminate\Database\Eloquent\Model`, `IntegrationWebhookTest.php`?**
-  _High betweenness centrality (0.052) - this node is a cross-community bridge._
+- **Why does `User` connect `User` to `DailyMeetingEntry`, `Team`, `PersonOneOnOneNote`, `Illuminate\Database\Eloquent\Factories\Factory`, `ExternalNotificationTest.php`, `PersonExternalIdentity`, `IntegrationSystem`, `Person`, `DevelopmentPlanItem`, `Illuminate\Database\Eloquent\Relations\BelongsTo`, `DevelopmentPlan`, `DailyMeetingPolicy`, `IntegrationWebhookEvent`, `PersonInvitation`, `ExternalNotification`, `OneOnOneSession`, `OneOnOneTemplate`, `TenantIsolationTest.php`, `DailyMeeting`, `DatabaseSeeder.php`, `PersonPolicy`, `User.php`, `LogoutService.php`?**
+  _High betweenness centrality (0.135) - this node is a cross-community bridge._
+- **Why does `Person` connect `Person` to `DailyMeetingEntry`, `Controller`, `Team`, `Illuminate\Database\Eloquent\Factories\Factory`, `Illuminate\Contracts\Validation\ValidationRule`, `PersonExternalIdentity`, `Illuminate\Database\Eloquent\Relations\HasMany`, `IntegrationSystem`, `Illuminate\Database\Eloquent\Relations\BelongsTo`, `DevelopmentPlan`, `IntegrationWebhookEvent`, `PersonInvitation`, `OneOnOneTemplate`, `TenantIsolationTest.php`, `ClickUpWebhookIngestService`, `Illuminate\Database\Eloquent\Model`, `DailyMeeting`, `TeamController.php`, `PersonPolicy`, `Filterable.php`?**
+  _High betweenness centrality (0.089) - this node is a cross-community bridge._
+- **Why does `IntegrationSystem` connect `IntegrationSystem` to `Controller`, `IntegrationSystemController.php`, `TenantIsolationTest.php`, `ClickUpWebhookIngestService`, `Filterable.php`, `Illuminate\Database\Eloquent\Model`, `Illuminate\Database\Eloquent\Factories\Factory`, `ExternalNotificationTest.php`, `PersonExternalIdentity`, `Illuminate\Database\Eloquent\Relations\HasMany`, `Illuminate\Database\Eloquent\Relations\BelongsTo`, `IntegrationWebhookEvent`?**
+  _High betweenness centrality (0.054) - this node is a cross-community bridge._
 - **What connects `php`, `docker-entrypoint.sh script`, `php` to the rest of the system?**
   _80 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Illuminate\Http\Request` be split into smaller, more focused modules?**
-  _Cohesion score 0.09523809523809523 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.0898989898989899 - nodes in this community are weakly interconnected._
 - **Should `DailyMeetingEntry` be split into smaller, more focused modules?**
-  _Cohesion score 0.14619883040935672 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.14166666666666666 - nodes in this community are weakly interconnected._
 - **Should `composer.json` be split into smaller, more focused modules?**
   _Cohesion score 0.14285714285714285 - nodes in this community are weakly interconnected._
