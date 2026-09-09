@@ -44,7 +44,7 @@ class IntegrationWebhookEventPolicy
      */
     public function delete(User $user, IntegrationWebhookEvent $integrationWebhookEvent): bool
     {
-        return false;
+        return $user->isTechLead();
     }
 
     /**

@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\ExternalNotificationController;
 use App\Http\Controllers\Api\V1\ExternalNotificationWebhookController;
 use App\Http\Controllers\Api\V1\GitHubWebhookController;
 use App\Http\Controllers\Api\V1\IntegrationSystemController;
+use App\Http\Controllers\Api\V1\IntegrationWebhookEventController;
 use App\Http\Controllers\Api\V1\OneOnOneSessionController;
 use App\Http\Controllers\Api\V1\OneOnOneTemplateController;
 use App\Http\Controllers\Api\V1\PersonController;
@@ -48,6 +49,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
         [IntegrationSystemController::class, 'regenerateToken']
     );
     Route::apiResource('integration-systems', IntegrationSystemController::class);
+    Route::apiResource('integration-webhook-events', IntegrationWebhookEventController::class)
+        ->only(['index', 'show', 'destroy']);
     Route::apiResource('person-external-identities', PersonExternalIdentityController::class);
     Route::apiResource('person-delivery-metrics', PersonDeliveryMetricController::class)->only(['index', 'show']);
     Route::apiResource('notifications', ExternalNotificationController::class)

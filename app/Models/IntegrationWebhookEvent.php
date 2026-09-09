@@ -2,14 +2,17 @@
 
 namespace App\Models;
 
+use App\Enums\SortDirection;
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\Filterable;
 use Database\Factories\IntegrationWebhookEventFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'integration_system_id',
@@ -29,7 +32,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class IntegrationWebhookEvent extends Model
 {
     /** @use HasFactory<IntegrationWebhookEventFactory> */
-    use BelongsToTenant, Filterable, HasFactory;
+    use BelongsToTenant, Filterable, HasFactory, SoftDeletes;
 
     /**
      * @return BelongsTo<IntegrationSystem, $this>
@@ -90,5 +93,52 @@ class IntegrationWebhookEvent extends Model
     protected function sortableFields(): array
     {
         return ['received_at', 'created_at', 'updated_at'];
+    }
+
+    /**
+     * @param  Builder<IntegrationWebhookEvent>  $query
+     * @param  array<string, mixed>  $filters
+     * @return Builder<IntegrationWebhookEvent>
+     */
+    public function scopeOperationalFilters(Builder $query, array $filters): Builder
+    {
+        if ((bool) ($filters['unmapped'] ?? false)) {
+            $query->whereNull('person_id');
+        }
+
+        if ((bool) ($filters['with_failure'] ?? false)) {
+            $query->whereNotNull('failure_reason');
+        }
+
+        if (isset($filters['received_from'])) {
+            $query->where('received_at', '>=', $filters['received_from']);
+        }
+
+        if (isset($filters['received_to'])) {
+            $query->where('received_at', '<=', $filters['received_to']);
+        }
+
+        return $query;
+    }
+
+    /**
+     * @param  Builder<IntegrationWebhookEvent>  $query
+     * @param  array<string, string>  $order
+     * @return Builder<IntegrationWebhookEvent>
+     */
+    public function scopeOperationalOrder(Builder $query, array $order): Builder
+    {
+        $applied = false;
+
+        foreach ($order as $field => $direction) {
+            if (! in_array($field, $this->sortableFields(), true)) {
+                continue;
+            }
+
+            $query->orderBy($field, SortDirection::tryFrom((string) $direction)?->value ?? SortDirection::Descending->value);
+            $applied = true;
+        }
+
+        return $applied ? $query : $query->orderByDesc('received_at')->orderByDesc('id');
     }
 }

@@ -1147,6 +1147,209 @@
                 }
             }
         },
+        "/integration-webhook-events": {
+            "get": {
+                "tags": [
+                    "Webhook events"
+                ],
+                "summary": "List processed webhook events for operational analysis",
+                "description": "Tech Lead-only endpoint for the desktop webhook event manager. The `payload` field is the processed/allowlisted provider payload, not the original raw webhook body.",
+                "security": [
+                    {
+                        "sanctumBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PerPage"
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "DRIE-21919"
+                    },
+                    {
+                        "name": "filters[integration_system_id]",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 1
+                    },
+                    {
+                        "name": "filters[person_id]",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 10
+                    },
+                    {
+                        "name": "filters[status]",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "processed"
+                    },
+                    {
+                        "name": "filters[unmapped]",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "example": true
+                    },
+                    {
+                        "name": "filters[with_failure]",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "example": true
+                    },
+                    {
+                        "name": "order[received_at]",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        },
+                        "example": "desc"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated webhook events.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/IntegrationWebhookEvent"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            }
+        },
+        "/integration-webhook-events/{integration_webhook_event}": {
+            "get": {
+                "tags": [
+                    "Webhook events"
+                ],
+                "summary": "Show one processed webhook event",
+                "security": [
+                    {
+                        "sanctumBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "integration_webhook_event",
+                        "in": "path",
+                        "required": true,
+                        "description": "Webhook event id.",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 99
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Webhook event details.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/IntegrationWebhookEvent"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "description": "Webhook event not found."
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Webhook events"
+                ],
+                "summary": "Archive a webhook event",
+                "description": "Soft-deletes the event so it is hidden from the operational list while preserving audit evidence.",
+                "security": [
+                    {
+                        "sanctumBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "integration_webhook_event",
+                        "in": "path",
+                        "required": true,
+                        "description": "Webhook event id.",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 99
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Webhook event archived."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "description": "Webhook event not found."
+                    }
+                }
+            }
+        },
         "/integration-systems/{integrationSystem}/regenerate-token": {
             "post": {
                 "tags": [
@@ -1462,6 +1665,19 @@
                         },
                         "example": {
                             "message": "Unauthenticated."
+                        }
+                    }
+                }
+            },
+            "Forbidden": {
+                "description": "Authenticated user is not allowed to perform this action.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        },
+                        "example": {
+                            "message": "This action is unauthorized."
                         }
                     }
                 }
@@ -2059,6 +2275,38 @@
                     },
                     "normalized_payload": {
                         "$ref": "#/components/schemas/NormalizedWebhookPayload"
+                    },
+                    "integration_system": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/IntegrationSystem"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "person": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Person"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "delivery_metrics_count": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "delivery_metrics": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PersonDeliveryMetric"
+                        }
                     },
                     "received_at": {
                         "type": "string",
