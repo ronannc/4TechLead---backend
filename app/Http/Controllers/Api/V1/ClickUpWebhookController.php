@@ -14,11 +14,18 @@ final class ClickUpWebhookController extends Controller
         Request $request,
         ClickUpWebhookIngestService $service,
     ): JsonResponse {
-        $event = $service->ingest(
-            $this->integrationToken($request),
-            $request->all(),
-            $request->getContent(),
-        );
+        $token = $this->integrationToken($request);
+        $event = $token === ''
+            ? $service->ingestSigned(
+                payload: $request->all(),
+                rawBody: $request->getContent(),
+                signature: (string) $request->header('X-Signature', ''),
+            )
+            : $service->ingest(
+                token: $token,
+                payload: $request->all(),
+                rawBody: $request->getContent(),
+            );
 
         return (new IntegrationWebhookEventResource($event))
             ->response()

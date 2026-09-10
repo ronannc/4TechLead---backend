@@ -47,6 +47,28 @@ it('creates an integration system with a one time webhook token', function (): v
     expect($storedSecret)->not->toBe($token);
 });
 
+it('returns the public clickup webhook url when creating a clickup integration', function (): void {
+    Sanctum::actingAs(User::factory()->create());
+
+    $response = $this->postJson('/api/v1/integration-systems', [
+        'name' => 'ClickUp Produto',
+        'provider' => 'clickup',
+        'description' => 'Tarefas e status do time de produto.',
+    ]);
+
+    $response
+        ->assertCreated()
+        ->assertJsonPath('data.provider', 'clickup')
+        ->assertJsonStructure(['data' => ['webhook_token', 'webhook_url']]);
+
+    $token = $response->json('data.webhook_token');
+
+    expect($response->json('data.webhook_url'))
+        ->toBeString()
+        ->toEndWith('/api/v1/clickup-webhooks')
+        ->not->toContain($token);
+});
+
 it('regenerates an integration webhook token and invalidates the old token', function (): void {
     Sanctum::actingAs(User::factory()->create());
 
@@ -271,6 +293,35 @@ it('receives a clickup api webhook payload using a query token', function (): vo
         ->assertJsonPath('data.normalized_payload.history_after', 'done')
         ->assertJsonPath('data.normalized_payload.user_name', 'Ronan')
         ->assertJsonPath('data.normalized_payload.task_id', '86ak1xv8h');
+
+    expect(PersonDeliveryMetric::query()->count())->toBe(0);
+});
+
+it('receives a signed clickup api webhook through a url without a token or integration id', function (): void {
+    $token = 'clickup-api-webhook-secret';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'clickup',
+        'token_hash' => hash('sha256', $token),
+        'webhook_secret' => $token,
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+    $payload = clickUpApiWebhookPayload();
+    $rawBody = json_encode($payload, JSON_THROW_ON_ERROR);
+
+    $this->call(
+        'POST',
+        '/api/v1/clickup-webhooks',
+        server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT' => 'application/json',
+            'HTTP_X_SIGNATURE' => hash_hmac('sha256', $rawBody, $token),
+        ],
+        content: $rawBody,
+    )->assertOk()
+        ->assertJsonPath('data.integration_system_id', $integration->id)
+        ->assertJsonPath('data.event_id', '4b67ac88-5749-4fdb-a975-ec5ed16b66e3:hist_123')
+        ->assertJsonPath('data.event_type', 'taskStatusUpdated')
+        ->assertJsonPath('data.normalized_payload.source', 'clickup');
 
     expect(PersonDeliveryMetric::query()->count())->toBe(0);
 });

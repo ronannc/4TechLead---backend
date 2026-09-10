@@ -23,8 +23,11 @@ class IntegrationSystemResource extends JsonResource
             'token_prefix' => $this->token_prefix,
             'webhook_token' => $this->when($this->webhook_token !== null, $this->webhook_token),
             'webhook_url' => $this->when(
-                in_array($this->provider, ['github', 'github-actions'], true),
-                fn (): string => URL::to('/api/v1/github-webhooks'),
+                in_array($this->provider, ['github', 'github-actions', 'clickup'], true),
+                fn (): string => URL::to(match ($this->provider) {
+                    'clickup' => '/api/v1/clickup-webhooks',
+                    default => '/api/v1/github-webhooks',
+                }),
             ),
             'active' => $this->active,
             'last_received_at' => $this->last_received_at,

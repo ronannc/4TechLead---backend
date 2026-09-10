@@ -469,7 +469,7 @@
                     "Webhooks"
                 ],
                 "summary": "Receive a ClickUp webhook event",
-                "description": "Public endpoint dedicated to ClickUp. Authenticate with `Authorization: Bearer <webhook_token>`, `X-Integration-Token: <webhook_token>`, or `?token=<webhook_token>`. The ClickUp integration is resolved from the token. Only a processed payload is stored; the raw body is represented by `payload_hash` and `payload_size_bytes` for audit/debug. Key ClickUp fields are extracted into `normalized_payload`; this endpoint does not generate delivery metrics yet.",
+                "description": "Public endpoint dedicated to ClickUp. Preferred authentication for ClickUp API webhooks is ClickUp's `X-Signature` HMAC-SHA256 signature, configured from the ClickUp webhook Secret. The integration is resolved by matching the signature against active ClickUp integration secrets. Legacy automation clients may still send `Authorization: Bearer <webhook_token>`, `X-Integration-Token: <webhook_token>`, or `?token=<webhook_token>`. Only a processed payload is stored; the raw body is represented by `payload_hash` and `payload_size_bytes` for audit/debug. Key ClickUp fields are extracted into `normalized_payload`; mapped status-completion events can generate delivery metrics.",
                 "security": [
                     {
                         "webhookBearer": []
@@ -479,6 +479,16 @@
                     }
                 ],
                 "parameters": [
+                    {
+                        "name": "X-Signature",
+                        "in": "header",
+                        "required": false,
+                        "description": "ClickUp HMAC-SHA256 signature computed with the webhook Secret. Required when no legacy token is sent.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "92a8f9c4b4..."
+                    },
                     {
                         "name": "token",
                         "in": "query",
@@ -584,7 +594,7 @@
                         }
                     },
                     "403": {
-                        "description": "Integration is inactive or is not a ClickUp provider.",
+                        "description": "Integration is inactive, is not a ClickUp provider, or the ClickUp signature is invalid.",
                         "content": {
                             "application/json": {
                                 "schema": {

@@ -24,7 +24,21 @@ final class ClickUpWebhookIngestService
     {
         $integrationSystem = $this->integrationSystem($token);
 
-        return $this->ingestForIntegration($integrationSystem, $token, $payload, $rawBody);
+        $this->assertCanReceive($integrationSystem, $token);
+
+        return $this->storeEvent($integrationSystem, $payload, $rawBody);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     *
+     * @throws Throwable
+     */
+    public function ingestSigned(array $payload, string $rawBody, string $signature): IntegrationWebhookEvent
+    {
+        $integrationSystem = $this->integrationSystemBySignature($rawBody, $signature);
+
+        return $this->storeEvent($integrationSystem, $payload, $rawBody);
     }
 
     /**
@@ -36,6 +50,16 @@ final class ClickUpWebhookIngestService
     {
         $this->assertCanReceive($integrationSystem, $token);
 
+        return $this->storeEvent($integrationSystem, $payload, $rawBody);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     *
+     * @throws Throwable
+     */
+    protected function storeEvent(IntegrationSystem $integrationSystem, array $payload, string $rawBody): IntegrationWebhookEvent
+    {
         return DB::transaction(function () use ($integrationSystem, $payload, $rawBody): IntegrationWebhookEvent {
             $normalizedPayload = $this->normalize($payload);
             $personId = $this->personIdFor($integrationSystem, $normalizedPayload['external_actor_code']);
@@ -81,6 +105,37 @@ final class ClickUpWebhookIngestService
         }
 
         return $integrationSystem;
+    }
+
+    protected function integrationSystemBySignature(string $rawBody, string $signature): IntegrationSystem
+    {
+        if ($signature === '') {
+            throw new AccessDeniedHttpException('Missing ClickUp signature.');
+        }
+
+        $normalizedSignature = str_starts_with($signature, 'sha256=')
+            ? substr($signature, strlen('sha256='))
+            : $signature;
+
+        $integrationSystems = IntegrationSystem::query()
+            ->where('provider', 'clickup')
+            ->where('active', true)
+            ->whereNotNull('webhook_secret')
+            ->get();
+
+        foreach ($integrationSystems as $integrationSystem) {
+            $secret = $integrationSystem->webhook_secret;
+
+            if (! is_string($secret) || $secret === '') {
+                continue;
+            }
+
+            if (hash_equals(hash_hmac('sha256', $rawBody, $secret), $normalizedSignature)) {
+                return $integrationSystem;
+            }
+        }
+
+        throw new AccessDeniedHttpException('Invalid ClickUp signature.');
     }
 
     protected function assertCanReceive(IntegrationSystem $integrationSystem, string $token): void

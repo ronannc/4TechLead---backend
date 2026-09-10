@@ -62,6 +62,33 @@ it('lists webhook events with search filters ordering and related context for te
         ->assertJsonPath('meta.total', 1);
 });
 
+it('lists clickup webhook events together with other providers when no provider-specific filter is applied', function (): void {
+    Sanctum::actingAs(User::factory()->create());
+
+    $github = IntegrationSystem::factory()->create(['name' => 'GitHub Produto', 'provider' => 'github']);
+    $clickUp = IntegrationSystem::factory()->create(['name' => 'ClickUp Produto', 'provider' => 'clickup']);
+
+    IntegrationWebhookEvent::factory()->create([
+        'integration_system_id' => $github->id,
+        'event_id' => 'github-event',
+        'event_type' => 'pull_request.opened',
+        'received_at' => '2026-09-08 10:00:00',
+    ]);
+    $clickUpEvent = IntegrationWebhookEvent::factory()->create([
+        'integration_system_id' => $clickUp->id,
+        'event_id' => 'clickup-event',
+        'event_type' => 'taskStatusUpdated',
+        'received_at' => '2026-09-09 10:00:00',
+    ]);
+
+    $this->getJson('/api/v1/integration-webhook-events?per_page=10')
+        ->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('data.0.id', $clickUpEvent->id)
+        ->assertJsonPath('data.0.integration_system.provider', 'clickup')
+        ->assertJsonPath('meta.total', 2);
+});
+
 it('shows a webhook event with processed payload and generated metrics', function (): void {
     Sanctum::actingAs(User::factory()->create());
 
