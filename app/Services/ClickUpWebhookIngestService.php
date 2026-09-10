@@ -232,6 +232,10 @@ final class ClickUpWebhookIngestService
         mixed $webhookId,
         mixed $historyItemId,
     ): string {
+        if ($eventType === 'clickup_automation') {
+            return hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));
+        }
+
         if (isset($payload['trigger_id']) && $payload['trigger_id'] !== '') {
             return (string) $payload['trigger_id'];
         }

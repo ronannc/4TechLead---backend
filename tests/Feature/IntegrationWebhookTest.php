@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\IntegrationSystem;
+use App\Models\IntegrationWebhookEvent;
 use App\Models\Person;
 use App\Models\PersonDeliveryMetric;
 use App\Models\PersonExternalIdentity;
@@ -174,6 +175,7 @@ it('receives a clickup automation webhook and stores only the processed payload 
     ]);
 
     $payload = clickUpAutomationPayload();
+    $eventId = hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));
 
     $this->postJson('/api/v1/clickup-webhooks', $payload, [
         'X-Integration-Token' => $token,
@@ -181,7 +183,7 @@ it('receives a clickup automation webhook and stores only the processed payload 
         ->assertJson(fn (AssertableJson $json) => $json
             ->where('data.integration_system_id', $integration->id)
             ->where('data.person_id', null)
-            ->where('data.event_id', '80c28fd1-2a2c-46a5-a0d6-67b0dbd27633:tasks')
+            ->where('data.event_id', $eventId)
             ->where('data.event_type', 'clickup_automation')
             ->where('data.external_actor_code', 'clickup_user:230504877')
             ->where('data.status', 'unmapped_person')
@@ -208,6 +210,19 @@ it('receives a clickup automation webhook and stores only the processed payload 
         ->and(data_get($event->normalized_payload, 'task_text_content'))->toBeNull();
 
     expect(PersonDeliveryMetric::query()->count())->toBe(0);
+});
+
+it('rejects a clickup automation webhook without token or signature', function (): void {
+    IntegrationSystem::factory()->create([
+        'provider' => 'clickup',
+        'webhook_secret' => 'clickup-automation-token',
+    ]);
+
+    $this->postJson('/api/v1/clickup-webhooks', clickUpAutomationPayload())
+        ->assertForbidden()
+        ->assertJsonPath('message', 'Missing ClickUp signature.');
+
+    expect(IntegrationWebhookEvent::query()->count())->toBe(0);
 });
 
 it('maps a clickup webhook to a person by the clickup user id stored on the person', function (): void {
@@ -252,7 +267,7 @@ it('stores a mapped clickup webhook as lake data without generating delivery met
     expect(PersonDeliveryMetric::query()->count())->toBe(0);
 });
 
-it('does not duplicate clickup webhook events with the same trigger id', function (): void {
+it('does not duplicate an identical clickup automation webhook retry', function (): void {
     $token = 'clickup-automation-token';
     $integration = IntegrationSystem::factory()->create([
         'provider' => 'clickup',
@@ -271,6 +286,45 @@ it('does not duplicate clickup webhook events with the same trigger id', functio
 
     expect($integration->webhookEvents()->count())->toBe(1)
         ->and(PersonDeliveryMetric::query()->count())->toBe(0);
+});
+
+it('stores distinct clickup automation status changes with the same trigger id', function (): void {
+    $token = 'clickup-automation-token';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'clickup',
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+
+    $firstPayload = clickUpAutomationPayload([
+        'date' => '2026-08-27T01:56:00.000Z',
+        'payload' => [
+            'status' => ['status' => 'em desenvolvimento'],
+            'status_id' => 'dev',
+        ],
+    ]);
+    $secondPayload = clickUpAutomationPayload([
+        'date' => '2026-08-27T02:10:00.000Z',
+        'payload' => [
+            'status' => ['status' => 'teste de qualidade'],
+            'status_id' => 'qa',
+        ],
+    ]);
+
+    $this->postJson('/api/v1/clickup-webhooks', $firstPayload, [
+        'Authorization' => "Bearer {$token}",
+    ])->assertOk();
+    $this->postJson('/api/v1/clickup-webhooks', $secondPayload, [
+        'Authorization' => "Bearer {$token}",
+    ])->assertOk();
+
+    expect($integration->webhookEvents()->count())->toBe(2)
+        ->and(
+            $integration->webhookEvents()
+                ->pluck('event_id')
+                ->unique()
+                ->count()
+        )->toBe(2);
 });
 
 it('receives a clickup api webhook payload using a query token', function (): void {
