@@ -1157,6 +1157,88 @@
                 }
             }
         },
+        "/delivery-kpis": {
+            "get": {
+                "tags": [
+                    "Delivery KPIs"
+                ],
+                "summary": "Summarize correlated delivery KPIs for the team or one developer",
+                "description": "Tech Lead-only aggregate calculated from correlated ClickUp and GitHub delivery cases. Each indicator includes its sample and coverage; no composite score is returned.",
+                "security": [
+                    {
+                        "sanctumBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "person_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "period_start",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "period_end",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "sprint",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "minimum_confidence",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["high", "medium", "low"],
+                            "default": "medium"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "KPI summary with coverage and samples.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["data"],
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/DeliveryKpiSummary"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "description": "Tech Lead role required."
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
         "/integration-webhook-events": {
             "get": {
                 "tags": [
@@ -2625,6 +2707,91 @@
                     "updated_at": {
                         "type": "string",
                         "format": "date-time"
+                    }
+                }
+            },
+            "DeliveryKpiSummary": {
+                "type": "object",
+                "required": [
+                    "definition_version",
+                    "filters",
+                    "confidence",
+                    "coverage",
+                    "published_delivery_count",
+                    "published_story_points",
+                    "development_cycle_time_hours",
+                    "qa_wait_time_hours",
+                    "qa_first_pass_rate",
+                    "qa_rework_rate",
+                    "blocked_time_hours"
+                ],
+                "properties": {
+                    "definition_version": {
+                        "type": "string",
+                        "example": "delivery-kpis.v1"
+                    },
+                    "filters": {
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "confidence": {
+                        "type": "object",
+                        "description": "Minimum association confidence applied and distribution of included cases.",
+                        "additionalProperties": true
+                    },
+                    "coverage": {
+                        "type": "object",
+                        "description": "Eligible, associated and timestamp-complete case counts.",
+                        "additionalProperties": true
+                    },
+                    "published_delivery_count": {
+                        "$ref": "#/components/schemas/DeliveryKpiValue"
+                    },
+                    "published_story_points": {
+                        "$ref": "#/components/schemas/DeliveryKpiValue"
+                    },
+                    "development_cycle_time_hours": {
+                        "$ref": "#/components/schemas/DeliveryKpiValue"
+                    },
+                    "qa_wait_time_hours": {
+                        "$ref": "#/components/schemas/DeliveryKpiValue"
+                    },
+                    "qa_first_pass_rate": {
+                        "$ref": "#/components/schemas/DeliveryKpiValue"
+                    },
+                    "qa_rework_rate": {
+                        "$ref": "#/components/schemas/DeliveryKpiValue"
+                    },
+                    "blocked_time_hours": {
+                        "$ref": "#/components/schemas/DeliveryKpiValue"
+                    }
+                }
+            },
+            "DeliveryKpiValue": {
+                "type": "object",
+                "description": "An aggregate with value or p50, sample size and coverage. Rates additionally contain numerator and denominator.",
+                "additionalProperties": true,
+                "properties": {
+                    "value": {
+                        "type": ["number", "null"]
+                    },
+                    "value_pct": {
+                        "type": ["number", "null"]
+                    },
+                    "p50": {
+                        "type": ["number", "null"]
+                    },
+                    "sample_size": {
+                        "type": "integer"
+                    },
+                    "coverage_rate_pct": {
+                        "type": ["number", "null"]
+                    },
+                    "numerator": {
+                        "type": "integer"
+                    },
+                    "denominator": {
+                        "type": "integer"
                     }
                 }
             },

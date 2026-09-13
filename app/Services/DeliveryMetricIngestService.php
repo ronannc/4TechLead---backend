@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
+use App\Enums\DeliveryStage;
 use App\Models\IntegrationWebhookEvent;
 use App\Models\PersonDeliveryMetric;
-use Illuminate\Support\Carbon;
 
 final class DeliveryMetricIngestService
 {
@@ -29,23 +29,7 @@ final class DeliveryMetricIngestService
         $metrics = [];
 
         if (($payload['source'] ?? null) === 'clickup') {
-            if (($payload['history_field'] ?? null) === 'status') {
-                $metrics[] = $this->metric('task_status_change_count', 1, 'count');
-            }
-
-            if ($this->isCompletedStatus($payload['history_after'] ?? $payload['task_status'] ?? null)) {
-                $metrics[] = $this->metric('task_completed_count', 1, 'count');
-
-                if (is_numeric($payload['task_sprint_points'] ?? null)) {
-                    $metrics[] = $this->metric(
-                        'task_delivery_points',
-                        (float) $payload['task_sprint_points'],
-                        'points',
-                    );
-                }
-            }
-
-            return $metrics;
+            return [];
         }
 
         if (str_starts_with($type, 'pull_request.')) {
@@ -85,11 +69,9 @@ final class DeliveryMetricIngestService
             }
         }
 
-        if (in_array($type, ['check_run.completed', 'check_suite.completed', 'workflow_run.completed'], true)) {
+        if ($type === 'workflow_run.completed') {
             $metrics[] = $this->metric('ci_run_count', 1, 'count');
-            $conclusion = $payload['check_run_conclusion']
-                ?? $payload['check_suite_conclusion']
-                ?? $payload['workflow_run_conclusion'];
+            $conclusion = $payload['workflow_run_conclusion'] ?? null;
             $metrics[] = $this->metric(
                 $conclusion === 'success' ? 'ci_success_count' : 'ci_failure_count',
                 1,
@@ -98,13 +80,16 @@ final class DeliveryMetricIngestService
         }
 
         if ($type === 'deployment_status.created') {
-            $metrics[] = $this->metric('deployment_count', 1, 'count');
             $state = $payload['deployment_status_state'] ?? null;
-            $metrics[] = $this->metric(
-                $state === 'success' ? 'deployment_success_count' : 'deployment_failure_count',
-                1,
-                'count',
-            );
+
+            if (in_array($state, ['success', 'failure', 'error'], true)) {
+                $metrics[] = $this->metric('deployment_count', 1, 'count');
+                $metrics[] = $this->metric(
+                    $state === 'success' ? 'deployment_success_count' : 'deployment_failure_count',
+                    1,
+                    'count',
+                );
+            }
         }
 
         return $metrics;
@@ -180,11 +165,6 @@ final class DeliveryMetricIngestService
 
         foreach ($githubEvents as $githubEvent) {
             foreach ($clickUpEvents as $clickUpEvent) {
-                $hours = $this->hoursBetween(
-                    data_get($clickUpEvent->normalized_payload, 'occurred_at'),
-                    data_get($githubEvent->normalized_payload, 'merged_at'),
-                );
-
                 $metadata = [
                     'github_event_id' => $githubEvent->id,
                     'clickup_event_id' => $clickUpEvent->id,
@@ -195,14 +175,6 @@ final class DeliveryMetricIngestService
                 ];
 
                 $this->persist($githubEvent, $this->metric('task_pull_request_link_count', 1, 'count'), $metadata);
-
-                if ($hours !== null && $hours >= 0) {
-                    $this->persist(
-                        $githubEvent,
-                        $this->metric('task_to_pull_request_hours', $hours, 'hours'),
-                        $metadata,
-                    );
-                }
             }
         }
     }
@@ -222,26 +194,6 @@ final class DeliveryMetricIngestService
 
     private function isCompletedStatus(mixed $status): bool
     {
-        return is_string($status) && in_array(strtolower(trim($status)), [
-            'done',
-            'complete',
-            'completed',
-            'closed',
-            'concluído',
-            'concluido',
-        ], true);
-    }
-
-    private function hoursBetween(mixed $start, mixed $end): ?float
-    {
-        if ($start === null || $end === null) {
-            return null;
-        }
-
-        try {
-            return round(Carbon::parse($start)->floatDiffInHours(Carbon::parse($end)), 2);
-        } catch (\Throwable) {
-            return null;
-        }
+        return DeliveryStage::fromClickUpStatus($status)?->isDelivery() === true;
     }
 }

@@ -21,6 +21,7 @@ class IntegrationSystemResource extends JsonResource
             'provider' => $this->provider,
             'description' => $this->description,
             'token_prefix' => $this->token_prefix,
+            'has_provider_api_token' => $this->provider_api_token !== null,
             'webhook_token' => $this->when($this->webhook_token !== null, $this->webhook_token),
             'webhook_url' => $this->when(
                 in_array($this->provider, ['github', 'github-actions', 'clickup'], true),

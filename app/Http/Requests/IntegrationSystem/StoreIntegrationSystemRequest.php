@@ -4,6 +4,7 @@ namespace App\Http\Requests\IntegrationSystem;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreIntegrationSystemRequest extends FormRequest
 {
@@ -26,6 +27,12 @@ class StoreIntegrationSystemRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'provider' => ['required', 'string', 'in:github,clickup,custom'],
             'description' => ['nullable', 'string'],
+            'provider_api_token' => [
+                'nullable',
+                'string',
+                'max:2048',
+                Rule::prohibitedIf(fn (): bool => $this->input('provider') !== 'clickup'),
+            ],
             'active' => ['sometimes', 'boolean'],
         ];
     }

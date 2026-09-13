@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'description',
     'token_hash',
     'webhook_secret',
+    'provider_api_token',
     'token_prefix',
     'active',
     'last_received_at',
@@ -25,6 +26,13 @@ class IntegrationSystem extends Model
 {
     /** @use HasFactory<IntegrationSystemFactory> */
     use BelongsToTenant, Filterable, HasFactory;
+
+    /** @var array<int, string> */
+    protected $hidden = [
+        'token_hash',
+        'webhook_secret',
+        'provider_api_token',
+    ];
 
     /**
      * @return HasMany<PersonExternalIdentity, $this>
@@ -65,6 +73,7 @@ class IntegrationSystem extends Model
     {
         return [
             'webhook_secret' => 'encrypted',
+            'provider_api_token' => 'encrypted',
             'active' => 'boolean',
             'last_received_at' => 'datetime',
         ];

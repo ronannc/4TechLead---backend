@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\IntegrationSystem;
 
+use App\Models\IntegrationSystem;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateIntegrationSystemRequest extends FormRequest
 {
@@ -26,6 +28,20 @@ class UpdateIntegrationSystemRequest extends FormRequest
             'name' => ['sometimes', 'string', 'max:255'],
             'provider' => ['sometimes', 'string', 'in:github,clickup,custom'],
             'description' => ['nullable', 'string'],
+            'provider_api_token' => [
+                'nullable',
+                'string',
+                'max:2048',
+                Rule::prohibitedIf(function (): bool {
+                    $integrationSystem = $this->route('integrationSystem');
+                    $provider = $this->input('provider')
+                        ?? ($integrationSystem instanceof IntegrationSystem
+                            ? $integrationSystem->provider
+                            : null);
+
+                    return $provider !== 'clickup';
+                }),
+            ],
             'active' => ['sometimes', 'boolean'],
         ];
     }

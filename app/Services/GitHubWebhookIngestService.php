@@ -9,6 +9,7 @@ use App\Models\PersonExternalIdentity;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
 use Throwable;
@@ -61,10 +62,21 @@ final class GitHubWebhookIngestService
         string $rawBody,
         array $headers,
     ): IntegrationWebhookEvent {
-        return DB::transaction(function () use ($integrationSystem, $payload, $rawBody, $headers): IntegrationWebhookEvent {
-            $normalizedPayload = $this->normalize($payload, $headers);
-            $personId = $this->personIdFor($integrationSystem, $normalizedPayload);
+        $normalizedPayload = $this->normalize($payload, $headers);
+        $existingEvent = IntegrationWebhookEvent::query()
+            ->where('integration_system_id', $integrationSystem->id)
+            ->where('event_id', $normalizedPayload['event_id'])
+            ->first();
 
+        if ($existingEvent !== null) {
+            app(GitHubDeliveryCaseProjector::class)->project($existingEvent);
+            app(DeliveryMetricIngestService::class)->ingest($existingEvent);
+
+            return $existingEvent->refresh();
+        }
+
+        $personId = $this->personIdFor($integrationSystem, $normalizedPayload);
+        $event = DB::transaction(function () use ($integrationSystem, $normalizedPayload, $personId, $rawBody): IntegrationWebhookEvent {
             $event = IntegrationWebhookEvent::query()->createOrFirst(
                 [
                     'integration_system_id' => $integrationSystem->id,
@@ -87,11 +99,15 @@ final class GitHubWebhookIngestService
 
             if ($event->wasRecentlyCreated) {
                 $integrationSystem->forceFill(['last_received_at' => now()])->save();
-                app(DeliveryMetricIngestService::class)->ingest($event);
             }
 
             return $event->refresh();
         });
+
+        app(GitHubDeliveryCaseProjector::class)->project($event);
+        app(DeliveryMetricIngestService::class)->ingest($event);
+
+        return $event->refresh();
     }
 
     protected function integrationSystem(string $token): IntegrationSystem
@@ -188,8 +204,13 @@ final class GitHubWebhookIngestService
             ?? $closedAt
             ?? $this->timestamp(Arr::get($review, 'submitted_at'))
             ?? $this->timestamp(Arr::get($checkRun, 'completed_at'))
+            ?? $this->timestamp(Arr::get($checkSuite, 'updated_at'))
+            ?? $this->timestamp(Arr::get($checkSuite, 'created_at'))
             ?? $this->timestamp(Arr::get($workflowRun, 'updated_at'))
-            ?? $this->timestamp(Arr::get($deploymentStatus, 'created_at'));
+            ?? $this->timestamp(Arr::get($deploymentStatus, 'created_at'))
+            ?? $this->timestamp(Arr::get($pullRequest, 'updated_at'))
+            ?? $this->timestamp(Arr::get($pullRequest, 'created_at'));
+        $taskRefs = $this->taskRefs($payload);
 
         return [
             'source' => 'github',
@@ -213,8 +234,8 @@ final class GitHubWebhookIngestService
             'source_ref' => Arr::get($payload, 'repository.full_name') === null || $this->pullRequestNumber($payload) === null
                 ? null
                 : Arr::get($payload, 'repository.full_name').'#'.$this->pullRequestNumber($payload),
-            'head_ref' => Arr::get($pullRequest, 'head.ref', Arr::get($checkRun, 'head_branch', Arr::get($workflowRun, 'head_branch', Arr::get($deployment, 'ref')))),
-            'head_sha' => Arr::get($pullRequest, 'head.sha', Arr::get($checkRun, 'head_sha', Arr::get($workflowRun, 'head_sha', Arr::get($deployment, 'sha')))),
+            'head_ref' => Arr::get($pullRequest, 'head.ref', Arr::get($checkRun, 'head_branch', Arr::get($checkSuite, 'head_branch', Arr::get($workflowRun, 'head_branch', Arr::get($deployment, 'ref'))))),
+            'head_sha' => Arr::get($pullRequest, 'head.sha', Arr::get($checkRun, 'head_sha', Arr::get($checkSuite, 'head_sha', Arr::get($workflowRun, 'head_sha', Arr::get($deployment, 'sha'))))),
             'base_ref' => Arr::get($pullRequest, 'base.ref'),
             'created_at' => $this->timestamp(Arr::get($pullRequest, 'created_at')),
             'updated_at' => $this->timestamp(Arr::get($pullRequest, 'updated_at')),
@@ -233,12 +254,16 @@ final class GitHubWebhookIngestService
             'check_run_conclusion' => Arr::get($checkRun, 'conclusion'),
             'check_run_started_at' => $this->timestamp(Arr::get($checkRun, 'started_at')),
             'check_run_completed_at' => $this->timestamp(Arr::get($checkRun, 'completed_at')),
+            'check_run_check_suite_id' => Arr::get($checkRun, 'check_suite.id'),
             'check_suite_id' => Arr::get($checkSuite, 'id'),
             'check_suite_status' => Arr::get($checkSuite, 'status'),
             'check_suite_conclusion' => Arr::get($checkSuite, 'conclusion'),
             'check_suite_head_branch' => Arr::get($checkSuite, 'head_branch'),
             'check_suite_head_sha' => Arr::get($checkSuite, 'head_sha'),
             'workflow_run_id' => Arr::get($workflowRun, 'id'),
+            'workflow_id' => Arr::get($workflowRun, 'workflow_id'),
+            'workflow_run_attempt' => Arr::get($workflowRun, 'run_attempt'),
+            'workflow_check_suite_id' => Arr::get($workflowRun, 'check_suite_id'),
             'workflow_run_name' => Arr::get($workflowRun, 'name'),
             'workflow_run_status' => Arr::get($workflowRun, 'status'),
             'workflow_run_conclusion' => Arr::get($workflowRun, 'conclusion'),
@@ -252,7 +277,8 @@ final class GitHubWebhookIngestService
             'deployment_status_state' => Arr::get($deploymentStatus, 'state'),
             'deployment_status_created_at' => $this->timestamp(Arr::get($deploymentStatus, 'created_at')),
             'deployment_status_updated_at' => $this->timestamp(Arr::get($deploymentStatus, 'updated_at')),
-            'task_refs' => $this->taskRefs($payload),
+            'task_refs' => $taskRefs,
+            'task_ref_ambiguous' => count($taskRefs) > 1,
             'quality_score' => $this->qualityScore(
                 reviewComments: (int) $this->number($pullRequest, 'review_comments'),
                 ciFailures: $this->isFailure(Arr::get($checkRun, 'conclusion'))
@@ -338,6 +364,11 @@ final class GitHubWebhookIngestService
     protected function personIdFor(IntegrationSystem $integrationSystem, array $normalizedPayload): ?int
     {
         $externalCode = $this->metricActorCode($normalizedPayload);
+
+        if (is_string($externalCode) && Str::endsWith($externalCode, '[bot]')) {
+            return $this->relatedPullRequestPersonId($integrationSystem, $normalizedPayload);
+        }
+
         $identity = $this->identityFor($integrationSystem, $externalCode);
 
         if ($identity !== null) {
@@ -377,7 +408,9 @@ final class GitHubWebhookIngestService
         }
 
         $pullRequests = IntegrationWebhookEvent::query()
-            ->where('integration_system_id', $integrationSystem->id)
+            ->where('tenant_id', $integrationSystem->tenant_id)
+            ->whereHas('integrationSystem', fn ($query) => $query
+                ->whereIn('provider', ['github', 'github-actions']))
             ->where('event_type', 'like', 'pull_request.%')
             ->whereNotNull('person_id')
             ->latest('received_at')
@@ -470,6 +503,7 @@ final class GitHubWebhookIngestService
                 'conclusion' => $normalizedPayload['check_run_conclusion'],
                 'started_at' => $normalizedPayload['check_run_started_at'],
                 'completed_at' => $normalizedPayload['check_run_completed_at'],
+                'check_suite_id' => $normalizedPayload['check_run_check_suite_id'],
             ], fn (mixed $value): bool => $value !== null && $value !== ''),
             'check_suite' => array_filter([
                 'id' => $normalizedPayload['check_suite_id'],
@@ -480,6 +514,9 @@ final class GitHubWebhookIngestService
             ], fn (mixed $value): bool => $value !== null && $value !== ''),
             'workflow_run' => array_filter([
                 'id' => $normalizedPayload['workflow_run_id'],
+                'workflow_id' => $normalizedPayload['workflow_id'],
+                'run_attempt' => $normalizedPayload['workflow_run_attempt'],
+                'check_suite_id' => $normalizedPayload['workflow_check_suite_id'],
                 'name' => $normalizedPayload['workflow_run_name'],
                 'status' => $normalizedPayload['workflow_run_status'],
                 'conclusion' => $normalizedPayload['workflow_run_conclusion'],
@@ -497,6 +534,7 @@ final class GitHubWebhookIngestService
                 'status_updated_at' => $normalizedPayload['deployment_status_updated_at'],
             ], fn (mixed $value): bool => $value !== null && $value !== ''),
             'task_refs' => $normalizedPayload['task_refs'],
+            'task_ref_ambiguous' => $normalizedPayload['task_ref_ambiguous'],
         ], fn (mixed $value): bool => $value !== null && $value !== [] && $value !== '');
     }
 
@@ -538,9 +576,13 @@ final class GitHubWebhookIngestService
             'action' => $action,
             'repository' => Arr::get($payload, 'repository.full_name'),
             'pull_request' => Arr::get($payload, 'pull_request.number'),
+            'review' => Arr::get($payload, 'review.id'),
+            'comment' => Arr::get($payload, 'comment.id'),
             'check_run' => Arr::get($payload, 'check_run.id'),
             'check_suite' => Arr::get($payload, 'check_suite.id'),
             'workflow_run' => Arr::get($payload, 'workflow_run.id'),
+            'workflow_run_attempt' => Arr::get($payload, 'workflow_run.run_attempt'),
+            'deployment' => Arr::get($payload, 'deployment.id'),
             'deployment_status' => Arr::get($payload, 'deployment_status.id'),
         ], JSON_THROW_ON_ERROR));
     }
@@ -593,7 +635,6 @@ final class GitHubWebhookIngestService
             Arr::get($payload, 'pull_request.title'),
             Arr::get($payload, 'pull_request.body'),
             Arr::get($payload, 'pull_request.head.ref'),
-            Arr::get($payload, 'pull_request.base.ref'),
             Arr::get($payload, 'check_run.head_branch'),
             Arr::get($payload, 'check_suite.head_branch'),
             Arr::get($payload, 'workflow_run.head_branch'),
@@ -614,10 +655,10 @@ final class GitHubWebhookIngestService
                 continue;
             }
 
-            preg_match_all('/\b[A-Z][A-Z0-9]+-\d+\b/', $value, $matches);
+            preg_match_all('/\b[A-Z][A-Z0-9]+-\d+\b/i', $value, $matches);
 
             foreach ($matches[0] as $match) {
-                $refs[] = $match;
+                $refs[] = Str::upper($match);
             }
         }
 
