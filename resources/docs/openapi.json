@@ -2131,7 +2131,10 @@
                         "type": "integer"
                     },
                     "integration_system_id": {
-                        "type": "integer"
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
                     },
                     "metadata": {
                         "type": [
@@ -2163,7 +2166,10 @@
                         "type": "integer"
                     },
                     "integration_system_id": {
-                        "type": "integer"
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
                     },
                     "external_code": {
                         "type": "string"
@@ -2273,7 +2279,10 @@
                         "type": "integer"
                     },
                     "integration_system_id": {
-                        "type": "integer"
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
                     },
                     "integration_system": {
                         "type": [
@@ -2372,7 +2381,10 @@
                         "type": "integer"
                     },
                     "integration_system_id": {
-                        "type": "integer"
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
                     },
                     "person_id": {
                         "type": [

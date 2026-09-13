@@ -2,6 +2,7 @@
 
 use App\Enums\DeliveryStage;
 use App\Models\DeliveryCase;
+use App\Models\ExternalNotification;
 use App\Models\IntegrationSystem;
 use App\Models\IntegrationWebhookEvent;
 use App\Models\Person;
@@ -181,7 +182,6 @@ it('revokes the webhook token without deleting the integration', function (): vo
         'webhook_secret' => $webhookToken,
         'provider_api_token' => 'pk_clickup_api_token',
     ]);
-
     $this->deleteJson("/api/v1/integration-systems/{$integration->id}/token")
         ->assertOk()
         ->assertJsonPath('data.id', $integration->id)
@@ -197,6 +197,60 @@ it('revokes the webhook token without deleting the integration', function (): vo
         ->and($integration->provider_api_token)->toBe('pk_clickup_api_token')
         ->and($integration->token_prefix)->toBeNull()
         ->and($integration->active)->toBeTrue();
+});
+
+it('deletes an integration while preserving events and related history', function (): void {
+    Sanctum::actingAs(User::factory()->create());
+
+    $webhookToken = 'deleted-clickup-token';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'clickup',
+        'token_hash' => hash('sha256', $webhookToken),
+        'token_prefix' => substr($webhookToken, 0, 8),
+        'webhook_secret' => $webhookToken,
+        'provider_api_token' => 'pk_clickup_api_token',
+    ]);
+    $identity = PersonExternalIdentity::factory()->create([
+        'integration_system_id' => $integration->id,
+    ]);
+    $event = IntegrationWebhookEvent::factory()->create([
+        'integration_system_id' => $integration->id,
+    ]);
+    $notification = ExternalNotification::factory()->create([
+        'integration_system_id' => $integration->id,
+    ]);
+
+    $this->deleteJson("/api/v1/integration-systems/{$integration->id}")
+        ->assertNoContent();
+
+    $this->postJson('/api/v1/clickup-webhooks', ['event' => 'taskUpdated'], [
+        'X-Integration-Token' => $webhookToken,
+    ])->assertUnauthorized();
+
+    $this->assertDatabaseMissing('integration_systems', ['id' => $integration->id]);
+    $this->assertDatabaseHas('person_external_identities', [
+        'id' => $identity->id,
+        'integration_system_id' => null,
+    ]);
+    $this->assertDatabaseHas('integration_webhook_events', [
+        'id' => $event->id,
+        'integration_system_id' => null,
+    ]);
+    $this->assertDatabaseHas('external_notifications', [
+        'id' => $notification->id,
+        'integration_system_id' => null,
+    ]);
+
+    $this->getJson('/api/v1/integration-webhook-events')
+        ->assertOk()
+        ->assertJsonPath('data.0.id', $event->id)
+        ->assertJsonPath('data.0.integration_system_id', null);
+
+    $this->getJson('/api/v1/notifications')
+        ->assertOk()
+        ->assertJsonPath('data.0.id', $notification->id)
+        ->assertJsonPath('data.0.integration_system_id', null)
+        ->assertJsonPath('data.0.integration_system', null);
 });
 
 it('maps an external identity to a person', function (): void {
