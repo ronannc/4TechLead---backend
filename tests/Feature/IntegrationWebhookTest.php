@@ -170,6 +170,35 @@ it('regenerates an integration webhook token and invalidates the old token', fun
         ->assertJsonPath('data.status', 'unmapped_person');
 });
 
+it('revokes the webhook token without deleting the integration', function (): void {
+    Sanctum::actingAs(User::factory()->create());
+
+    $webhookToken = 'clickup-webhook-secret';
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'clickup',
+        'token_hash' => hash('sha256', $webhookToken),
+        'token_prefix' => substr($webhookToken, 0, 8),
+        'webhook_secret' => $webhookToken,
+        'provider_api_token' => 'pk_clickup_api_token',
+    ]);
+
+    $this->deleteJson("/api/v1/integration-systems/{$integration->id}/token")
+        ->assertOk()
+        ->assertJsonPath('data.id', $integration->id)
+        ->assertJsonPath('data.has_webhook_token', false)
+        ->assertJsonPath('data.has_provider_api_token', true)
+        ->assertJsonPath('data.token_prefix', null)
+        ->assertJsonMissingPath('data.webhook_token');
+
+    $integration->refresh();
+
+    expect($integration->token_hash)->toBeNull()
+        ->and($integration->webhook_secret)->toBeNull()
+        ->and($integration->provider_api_token)->toBe('pk_clickup_api_token')
+        ->and($integration->token_prefix)->toBeNull()
+        ->and($integration->active)->toBeTrue();
+});
+
 it('maps an external identity to a person', function (): void {
     Sanctum::actingAs(User::factory()->create());
 

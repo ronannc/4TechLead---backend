@@ -49,6 +49,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
         'integration-systems/{integrationSystem}/regenerate-token',
         [IntegrationSystemController::class, 'regenerateToken']
     );
+    Route::delete(
+        'integration-systems/{integrationSystem}/token',
+        [IntegrationSystemController::class, 'revokeToken']
+    );
     Route::apiResource('integration-systems', IntegrationSystemController::class);
     Route::apiResource('integration-webhook-events', IntegrationWebhookEventController::class)
         ->only(['index', 'show', 'destroy']);

@@ -29,4 +29,20 @@ final class IntegrationSystemTokenService
             return $integrationSystem;
         });
     }
+
+    /**
+     * @throws Throwable
+     */
+    public function revoke(IntegrationSystem $integrationSystem): IntegrationSystem
+    {
+        return DB::transaction(function () use ($integrationSystem): IntegrationSystem {
+            $integrationSystem->forceFill([
+                'token_hash' => null,
+                'webhook_secret' => null,
+                'token_prefix' => null,
+            ])->save();
+
+            return $integrationSystem->refresh();
+        });
+    }
 }

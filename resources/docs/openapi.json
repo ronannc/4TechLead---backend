@@ -1512,6 +1512,53 @@
                 }
             }
         },
+        "/integration-systems/{integrationSystem}/token": {
+            "delete": {
+                "tags": [
+                    "Integration systems"
+                ],
+                "summary": "Revoke all tokens for an integration system",
+                "description": "Permanently removes the webhook token and, for ClickUp, its provider API token. The integration configuration remains, but it cannot receive or enrich events until a new credential is configured.",
+                "security": [
+                    {
+                        "sanctumBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "integrationSystem",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tokens revoked; no plaintext credential is returned.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/IntegrationSystem"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "description": "Tech Lead role required."
+                    }
+                }
+            }
+        },
         "/auth/accept-person-invitation": {
             "post": {
                 "tags": [
@@ -2008,7 +2055,16 @@
                         ]
                     },
                     "token_prefix": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "has_webhook_token": {
+                        "type": "boolean"
+                    },
+                    "has_provider_api_token": {
+                        "type": "boolean"
                     },
                     "webhook_url": {
                         "type": "string",

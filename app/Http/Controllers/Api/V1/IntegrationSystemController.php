@@ -41,4 +41,18 @@ final class IntegrationSystemController extends Controller
 
         return (new IntegrationSystemResource($integrationSystem))->response();
     }
+
+    /**
+     * @throws Throwable
+     */
+    public function revokeToken(
+        IntegrationSystem $integrationSystem,
+        IntegrationSystemTokenService $tokenService,
+    ): JsonResponse {
+        $this->authorize('update', $integrationSystem);
+
+        $integrationSystem = $tokenService->revoke($integrationSystem);
+
+        return (new IntegrationSystemResource($integrationSystem))->response();
+    }
 }
