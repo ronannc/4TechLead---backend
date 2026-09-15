@@ -5,6 +5,7 @@ use App\Models\IntegrationWebhookEvent;
 use App\Models\Person;
 use App\Models\PersonDeliveryMetric;
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 
 it('lists webhook events with search filters ordering and related context for tech leads', function (): void {
@@ -115,6 +116,78 @@ it('shows a webhook event with processed payload and generated metrics', functio
         ->assertJsonPath('data.normalized_payload.task_reference', 'DRIE-21919')
         ->assertJsonPath('data.delivery_metrics.0.metric_type', 'code_quality_score')
         ->assertJsonPath('data.delivery_metrics.0.metric_value', '95.00');
+});
+
+it('manually enriches a stored clickup event through the ClickUp API', function (): void {
+    Sanctum::actingAs(User::factory()->create());
+
+    Http::fake([
+        'https://api.clickup.com/api/v2/task/task-to-enrich' => Http::response([
+            'id' => 'task-to-enrich',
+            'custom_id' => 'DRIE-123',
+            'name' => 'Task obtida pela API',
+            'status' => ['status' => 'Validando'],
+            'url' => 'https://app.clickup.com/t/task-to-enrich',
+            'list' => ['id' => 'list-123'],
+            'tags' => [['name' => 'manual-test']],
+            'assignees' => [['id' => 42, 'username' => 'Responsável API']],
+        ]),
+    ]);
+
+    $integration = IntegrationSystem::factory()->create([
+        'provider' => 'clickup',
+        'provider_api_token' => 'pk_test_clickup_token',
+    ]);
+    $event = IntegrationWebhookEvent::factory()->create([
+        'integration_system_id' => $integration->id,
+        'person_id' => null,
+        'event_type' => 'clickup_automation',
+        'external_actor_code' => 'clickup_user:actor-9',
+        'payload' => [
+            'source' => 'clickup',
+            'event_id' => 'manual-enrichment-test',
+            'event_type' => 'clickup_automation',
+            'task' => ['id' => 'task-to-enrich', 'assignees' => []],
+            'actor' => ['id' => 'actor-9', 'name' => 'Quem alterou'],
+        ],
+        'normalized_payload' => [
+            'source' => 'clickup',
+            'event_id' => 'manual-enrichment-test',
+            'event_type' => 'clickup_automation',
+            'external_actor_code' => 'clickup_user:actor-9',
+            'task_id' => 'task-to-enrich',
+            'task_custom_id' => null,
+            'task_name' => null,
+            'task_status' => null,
+            'task_stage' => null,
+            'task_url' => null,
+            'task_assignees' => [],
+            'task_assignees_authoritative' => false,
+            'task_tags' => [],
+            'task_tags_authoritative' => false,
+            'list_ids' => [],
+        ],
+    ]);
+
+    $this->postJson("/api/v1/integration-webhook-events/{$event->id}/enrich")
+        ->assertOk()
+        ->assertJsonPath('data.external_actor_code', 'clickup_user:actor-9')
+        ->assertJsonPath('data.payload.task.name', 'Task obtida pela API')
+        ->assertJsonPath('data.payload.task.assignees.0.name', 'Responsável API')
+        ->assertJsonPath('data.normalized_payload.task_enrichment_status', 'enriched')
+        ->assertJsonPath('data.normalized_payload.task_assignees_source', 'provider_api');
+
+    Http::assertSent(fn ($request): bool => $request->hasHeader('Authorization', 'pk_test_clickup_token')
+        && $request->url() === 'https://api.clickup.com/api/v2/task/task-to-enrich');
+});
+
+it('does not allow members to manually enrich webhook events', function (): void {
+    Sanctum::actingAs(User::factory()->member()->create());
+
+    $event = IntegrationWebhookEvent::factory()->create();
+
+    $this->postJson("/api/v1/integration-webhook-events/{$event->id}/enrich")
+        ->assertForbidden();
 });
 
 it('archives webhook events instead of permanently deleting them', function (): void {

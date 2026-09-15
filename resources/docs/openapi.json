@@ -1403,6 +1403,62 @@
                     }
                 }
             },
+            "post": {
+                "tags": [
+                    "Webhook events"
+                ],
+                "summary": "Retry ClickUp task enrichment for a stored event",
+                "description": "Tech Lead-only action. Calls the ClickUp task API using the integration's provider API token, stores the enrichment result and status, and returns the updated event. The event actor remains unchanged.",
+                "security": [
+                    {
+                        "sanctumBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "integration_webhook_event",
+                        "in": "path",
+                        "required": true,
+                        "description": "Webhook event id.",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 99
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated webhook event, including the task enrichment status.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/IntegrationWebhookEvent"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "description": "Webhook event not found."
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
             "delete": {
                 "tags": [
                     "Webhook events"

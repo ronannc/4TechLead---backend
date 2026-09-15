@@ -12,12 +12,75 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
 use Throwable;
 
 final class ClickUpWebhookIngestService
 {
+    public function enrichEvent(IntegrationWebhookEvent $event): IntegrationWebhookEvent
+    {
+        $event->loadMissing('integrationSystem');
+        $integrationSystem = $event->integrationSystem;
+
+        if ($integrationSystem?->provider !== 'clickup') {
+            throw ValidationException::withMessages([
+                'event' => 'Somente eventos ClickUp podem ser enriquecidos pela API do ClickUp.',
+            ]);
+        }
+
+        $normalizedPayload = array_replace([
+            'source' => 'clickup',
+            'event_id' => $event->event_id,
+            'event_type' => $event->event_type,
+            'external_actor_code' => $event->external_actor_code,
+            'occurred_at' => $event->received_at?->toISOString(),
+            'workspace_id' => null,
+            'task_id' => data_get($event->payload, 'task.id'),
+            'task_custom_id' => data_get($event->payload, 'task.custom_id'),
+            'task_name' => data_get($event->payload, 'task.name'),
+            'task_status' => data_get($event->payload, 'task.status'),
+            'task_stage' => data_get($event->payload, 'task.stage'),
+            'task_status_id' => data_get($event->payload, 'task.status_id'),
+            'task_sprint_points' => data_get($event->payload, 'task.sprint_points'),
+            'task_assignees' => (array) data_get($event->payload, 'task.assignees', []),
+            'task_assignees_authoritative' => false,
+            'task_tags' => (array) data_get($event->payload, 'task.tags', []),
+            'task_tags_authoritative' => false,
+            'task_refs' => [],
+            'source_ref' => data_get($event->payload, 'source_ref'),
+            'list_ids' => (array) data_get($event->payload, 'list_ids', []),
+            'history_item_id' => null,
+            'history_field' => null,
+            'history_before' => null,
+            'history_after' => null,
+            'history_before_stage' => null,
+            'history_after_stage' => null,
+            'user_id' => data_get($event->payload, 'actor.id'),
+            'user_name' => data_get($event->payload, 'actor.name'),
+            'task_url' => data_get($event->payload, 'task.url'),
+        ], $event->normalized_payload ?? []);
+        $taskId = $normalizedPayload['task_id'] ?? data_get($event->payload, 'task.id');
+
+        $snapshot = $taskId === null || $taskId === ''
+            ? ['task_enrichment_status' => 'skipped_missing_task_id']
+            : $this->fetchTaskSnapshot($integrationSystem, (string) $taskId);
+
+        $normalizedPayload = $this->mergeMissingTaskSnapshot($normalizedPayload, $snapshot);
+        $event->forceFill([
+            'payload' => $this->processedPayload($normalizedPayload),
+            'normalized_payload' => $normalizedPayload,
+        ])->save();
+
+        if (($snapshot['task_enrichment_status'] ?? null) === 'enriched') {
+            app(DeliveryCaseProjector::class)->project($event->refresh());
+            app(DeliveryMetricIngestService::class)->ingest($event->refresh());
+        }
+
+        return $event->refresh()->load(['integrationSystem', 'person', 'deliveryMetrics']);
+    }
+
     /**
      * @param  array<string, mixed>  $payload
      *
@@ -215,7 +278,7 @@ final class ClickUpWebhookIngestService
             'source' => 'clickup',
             'event_id' => $this->eventId($payload, $eventType, $taskId, $webhookId, $historyItemId),
             'event_type' => $eventType,
-            'external_actor_code' => $this->externalActorCode($payload, $historyItem, $task),
+            'external_actor_code' => $this->externalActorCode($payload, $historyItem),
             'occurred_at' => $occurredAt,
             'webhook_id' => $webhookId,
             'trigger_id' => $payload['trigger_id'] ?? null,
@@ -309,13 +372,11 @@ final class ClickUpWebhookIngestService
     /**
      * @param  array<string, mixed>  $payload
      * @param  array<string, mixed>  $historyItem
-     * @param  array<string, mixed>  $task
      */
-    protected function externalActorCode(array $payload, array $historyItem, array $task): ?string
+    protected function externalActorCode(array $payload, array $historyItem): ?string
     {
         $userId = Arr::get($historyItem, 'user.id')
-            ?? Arr::get($task, 'ownership.owner')
-            ?? Arr::get((array) Arr::first((array) Arr::get($task, 'users', [])), 'userid')
+            ?? Arr::get($payload, 'user.id')
             ?? $payload['user_id']
             ?? null;
 
@@ -688,7 +749,7 @@ final class ClickUpWebhookIngestService
         $token = $integrationSystem->provider_api_token;
 
         if (! is_string($token) || $token === '') {
-            return [];
+            return ['task_enrichment_status' => 'skipped_missing_provider_api_token'];
         }
 
         try {

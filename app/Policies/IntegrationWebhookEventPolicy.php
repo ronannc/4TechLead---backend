@@ -39,6 +39,11 @@ class IntegrationWebhookEventPolicy
         return false;
     }
 
+    public function enrich(User $user, IntegrationWebhookEvent $integrationWebhookEvent): bool
+    {
+        return $user->isTechLead();
+    }
+
     /**
      * Determine whether the user can delete the model.
      */

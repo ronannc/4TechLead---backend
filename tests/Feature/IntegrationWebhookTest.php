@@ -310,7 +310,7 @@ it('receives a clickup automation webhook and stores only the processed payload 
             ->where('data.person_id', null)
             ->where('data.event_id', $eventId)
             ->where('data.event_type', 'clickup_automation')
-            ->where('data.external_actor_code', 'clickup_user:230504877')
+            ->where('data.external_actor_code', null)
             ->where('data.status', 'unmapped_person')
             ->where('data.payload.event_type', 'clickup_automation')
             ->where('data.payload.task.id', '86ak1xv8h')
@@ -369,7 +369,13 @@ it('maps a clickup webhook to a person by the clickup user id stored on the pers
         'clickup_user_id' => '230504877',
     ]);
 
-    $this->postJson('/api/v1/clickup-webhooks', clickUpAutomationPayload(), [
+    $payload = clickUpAutomationPayload();
+    $payload['history_items'] = [[
+        'field' => 'status',
+        'user' => ['id' => '230504877', 'username' => 'Ronan'],
+    ]];
+
+    $this->postJson('/api/v1/clickup-webhooks', $payload, [
         'X-Integration-Token' => $token,
     ])->assertOk()
         ->assertJsonPath('data.person_id', $person->id)
@@ -390,7 +396,13 @@ it('stores a mapped clickup webhook as lake data without generating delivery met
         'external_code' => 'clickup_user:230504877',
     ]);
 
-    $this->postJson('/api/v1/clickup-webhooks', clickUpAutomationPayload(), [
+    $payload = clickUpAutomationPayload();
+    $payload['history_items'] = [[
+        'field' => 'status',
+        'user' => ['id' => '230504877', 'username' => 'Ronan'],
+    ]];
+
+    $this->postJson('/api/v1/clickup-webhooks', $payload, [
         'X-Integration-Token' => $token,
     ])->assertOk()
         ->assertJsonPath('data.person_id', $person->id)
@@ -546,6 +558,47 @@ it('enriches an incomplete clickup task snapshot before opening the database tra
 
     Http::assertSent(fn ($request): bool => $request->hasHeader('Authorization', 'pk_clickup_api_token')
         && $request->url() === 'https://api.clickup.com/api/v2/task/86ak1xv8h');
+});
+
+it('keeps the webhook actor separate from the task assignee', function (): void {
+    $token = 'clickup-actor-separation-token';
+    IntegrationSystem::factory()->create([
+        'provider' => 'clickup',
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+
+    $payload = clickUpAutomationPayload();
+    $payload['history_items'] = [[
+        'id' => 'actor-separation-history',
+        'field' => 'status',
+        'user' => ['id' => 'actor-123', 'username' => 'Quem alterou'],
+    ]];
+    $payload['user_id'] = null;
+    $payload['payload']['users'] = [['userid' => 242687264, 'username' => 'Responsável']];
+
+    $this->postJson('/api/v1/clickup-webhooks', $payload, [
+        'X-Integration-Token' => $token,
+    ])->assertOk()
+        ->assertJsonPath('data.external_actor_code', 'clickup_user:actor-123')
+        ->assertJsonPath('data.person_id', null)
+        ->assertJsonPath('data.payload.task.assignees.0.name', 'Responsável')
+        ->assertJsonPath('data.normalized_payload.task_assignees.0.external_code', 'clickup_user:242687264')
+        ->assertJsonPath('data.normalized_payload.user_name', 'Quem alterou');
+});
+
+it('records when clickup task enrichment is skipped because no provider api token is configured', function (): void {
+    $token = 'clickup-missing-api-token';
+    IntegrationSystem::factory()->create([
+        'provider' => 'clickup',
+        'token_hash' => hash('sha256', $token),
+        'token_prefix' => substr($token, 0, 8),
+    ]);
+
+    $this->postJson('/api/v1/clickup-webhooks', clickUpAutomationPayload(), [
+        'X-Integration-Token' => $token,
+    ])->assertOk()
+        ->assertJsonPath('data.normalized_payload.task_enrichment_status', 'skipped_missing_provider_api_token');
 });
 
 it('receives a clickup api webhook payload using a query token', function (): void {

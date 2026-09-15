@@ -56,6 +56,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::apiResource('integration-systems', IntegrationSystemController::class);
     Route::apiResource('integration-webhook-events', IntegrationWebhookEventController::class)
         ->only(['index', 'show', 'destroy']);
+    Route::post(
+        'integration-webhook-events/{integrationWebhookEvent}/enrich',
+        [IntegrationWebhookEventController::class, 'enrich']
+    );
     Route::apiResource('person-external-identities', PersonExternalIdentityController::class);
     Route::apiResource('person-delivery-metrics', PersonDeliveryMetricController::class)->only(['index', 'show']);
     Route::get('delivery-kpis', DeliveryKpiController::class);

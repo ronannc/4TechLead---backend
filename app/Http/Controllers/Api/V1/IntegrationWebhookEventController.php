@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\IntegrationWebhook\IndexIntegrationWebhookEventRequest;
 use App\Http\Resources\IntegrationWebhookEventResource;
 use App\Models\IntegrationWebhookEvent;
+use App\Services\ClickUpWebhookIngestService;
 use App\Services\IntegrationWebhookEventIndexService;
 use Illuminate\Http\JsonResponse;
 
@@ -14,6 +15,7 @@ final class IntegrationWebhookEventController extends Controller
 {
     public function __construct(
         private readonly IntegrationWebhookEventIndexService $indexService,
+        private readonly ClickUpWebhookIngestService $clickUpWebhookIngestService,
     ) {}
 
     public function index(IndexIntegrationWebhookEventRequest $request): JsonResponse
@@ -31,6 +33,15 @@ final class IntegrationWebhookEventController extends Controller
 
         return (new IntegrationWebhookEventResource(
             $integrationWebhookEvent->load(['integrationSystem', 'person', 'deliveryMetrics'])
+        ))->response();
+    }
+
+    public function enrich(IntegrationWebhookEvent $integrationWebhookEvent): JsonResponse
+    {
+        $this->authorize('enrich', $integrationWebhookEvent);
+
+        return (new IntegrationWebhookEventResource(
+            $this->clickUpWebhookIngestService->enrichEvent($integrationWebhookEvent)
         ))->response();
     }
 
